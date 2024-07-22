@@ -130,7 +130,7 @@ object accelShell
   with ScalacOptions { m =>
   override def millSourcePath = os.pwd
   // Update moduleDeps as required
-  override def moduleDeps = super.moduleDeps ++ Seq(inclusivecache)
+  override def moduleDeps = super.moduleDeps ++ Seq(myrocketchip)
 
   object test extends SbtModuleTests with ScalaTest with ScalafmtModule with ScalafixModule {
     override def ivyDeps = super.ivyDeps() ++ Agg(

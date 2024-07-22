@@ -7,7 +7,7 @@ MILL = ./mill
 
 # Targets
 rtl:## Generates Verilog code from Chisel sources (output to ./generated_sv_dir)
-	$(MILL) $(project).runMain $(project).accelShellMain SimMem
+	$(MILL) $(project).runMain $(project).accelShellMain $(TARGET)
 
 check: test
 .PHONY: test

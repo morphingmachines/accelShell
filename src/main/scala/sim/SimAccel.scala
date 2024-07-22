@@ -10,7 +10,14 @@ class SimAccel(implicit p: Parameters)
   with HasSimTLDeviceMem
   with HasHost2AccelAXI4
   with HasHost2DeviceMemAXI4 {
-  val rrm = LazyModule(new simpleAccel.DummyBaseRRM)
+  val rrm = LazyModule(
+    new simpleAccel.DummyBaseRRM(
+      ctrlBusParams.base,
+      ctrlBusParams.size,
+      ctrlBusParams.beatBytes,
+      ctrlBusParams.maxXferBytes,
+    ),
+  )
 
   val deviceMemXbar = LazyModule(new TLXbar)
   rrm.inputXbar.node := host2Accel

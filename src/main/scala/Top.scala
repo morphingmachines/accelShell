@@ -4,6 +4,7 @@ import circt.stage.ChiselStage
 import freechips.rocketchip.diplomacy.LazyModule
 import freechips.rocketchip.unittest.UnitTest
 import freechips.rocketchip.util.ElaborationArtefacts
+import org.chipsalliance.cde.config.Config
 
 import java.io._
 import java.nio.file._
@@ -136,14 +137,14 @@ trait WithLazyModuleDUT { this: VerilateTestHarness with LazyToplevel =>
   */
 
 object accelShellMain extends App with LazyToplevel {
-  import org.chipsalliance.cde.config.Parameters
+  // import org.chipsalliance.cde.config.Parameters
   val str = if (args.length == 0) "" else args(0)
   val lazyTop = str match {
-    case "DMA"      => LazyModule(new accelShell.sim.simpleAccel.DMATop()(Parameters.empty))
-    case "RRM"      => LazyModule(new accelShell.sim.simpleAccel.DummyRRM()(Parameters.empty))
-    case "SimAccel" => LazyModule(new accelShell.sim.SimAccel()(Parameters.empty))
-    case "SimMem"   => LazyModule(new accelShell.sim.SimDeviceMem()(Parameters.empty))
-    case _          => LazyModule(new accelShell.sim.simpleAccel.DMATop()(Parameters.empty))
+    // case "DMA"      => LazyModule(new accelShell.sim.simpleAccel.DMATop()(Parameters.empty))
+    case "RRM"      => LazyModule(new accelShell.sim.simpleAccel.DummyRRM()(new Config(new DefaultAccelConfig)))
+    case "SimAccel" => LazyModule(new accelShell.sim.SimAccel()(new Config(new DefaultAccelConfig)))
+    case "SimMem"   => LazyModule(new accelShell.sim.SimDeviceMem()(new Config(new DefaultAccelConfig)))
+    // case _          => LazyModule(new accelShell.sim.simpleAccel.DMATop()(Parameters.empty))
     // case _    => throw new Exception("Unknown Module Name!")
   }
 

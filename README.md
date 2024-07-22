@@ -1,7 +1,7 @@
 Discrete Accelerator Shell
 =======================
 
-An accelerator wrapper with exposes TL-UH interfaces as AXI4 interfaces using the Diplomacy framework.
+An accelerator wrapper exposes TL-UH interfaces as AXI4 interfaces using the Diplomacy framework.
 
 
 ## Discrete Accelerator Interfaces 
@@ -18,13 +18,13 @@ An accelerator wrapper with exposes TL-UH interfaces as AXI4 interfaces using th
 ### Simulation environment for a simple accelerator
 <img src="./doc/SimAccel.png" width="400"/>
 
-Use this project as a starting point for your project. This project uses [playground](https://github.com/morphingmachines/playground.git) as a library. `playground` and `this template` directories should be at the same level, as shown below.  
+As a standalone project, it uses [playground](https://github.com/morphingmachines/playground.git) as a library. `playground` and `accelShell` directories should be at the same level, as shown below.  
 ```
   workspace
   |-- playground
   |-- accelShell
 ```
-Make sure that you have a working [playground](https://github.com/morphingmachines/playground.git) project before proceeding further. And donot rename/modify `playground` directory structure.
+Make sure that you have a working [playground](https://github.com/morphingmachines/playground.git) project before proceeding further. And do not rename/modify `playground` directory structure.
 
 ## Clone the code
 ```sh
@@ -33,7 +33,7 @@ $ git clone https://github.com/morphingmachines/accelShell.git
 ### Generating RTL
 ```sh
 $ cd accelShell
-$ make rtl
+$ make rtl TARGET=SimMem # other targets {SimMem, SimAccel, RRM}            
 ```
 The output verilog files are generated in the `./generated_sv_dir` directory. This also generates a `graphml` file that visualizes the diplomacy graph of different components in the system. To view `graphml` file, as shown below, use [yEd](https://askubuntu.com/a/504178).
 

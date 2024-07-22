@@ -15,24 +15,34 @@ import freechips.rocketchip.tilelink.{
 }
 import org.chipsalliance.cde.config._
 
-class DMATop(implicit p: Parameters) extends LazyModule {
+class DMATop(
+  wrAddr:         AddressRange,
+  wrBeatBytes:    Int,
+  wrMaxXferBytes: Int,
+  rdAddr:         AddressRange,
+  rdBeatBytes:    Int,
+  rdMaxXferBytes: Int,
+)(
+  implicit p: Parameters,
+) extends LazyModule {
   val clientNode = TLClientNode(
     Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "MyDevice", sourceId = IdRange(0, 1))))),
   )
 
+  // Read from External Memory interface
   val dmaRdPortNode = TLManagerNode(
     Seq(
       TLSlavePortParameters.v1(
         Seq(
           TLSlaveParameters.v1(
-            address = Seq(AddressSet(0x1000_0000, 0x0fff_ffff)),
+            address = AddressSet.misaligned(rdAddr.base, rdAddr.size),
             regionType = RegionType.UNCACHED,
-            supportsPutFull = TransferSizes(4, 64),
-            supportsPutPartial = TransferSizes(4, 64),
-            supportsGet = TransferSizes(4, 64),
+            supportsPutFull = TransferSizes.none,
+            supportsPutPartial = TransferSizes.none,
+            supportsGet = TransferSizes(rdBeatBytes, rdMaxXferBytes),
           ),
         ),
-        beatBytes = 8,
+        beatBytes = rdBeatBytes,
         minLatency = 1,
         endSinkId = 0,
       ),
@@ -44,22 +54,24 @@ class DMATop(implicit p: Parameters) extends LazyModule {
       TLSlavePortParameters.v1(
         Seq(
           TLSlaveParameters.v1(
-            address = Seq(AddressSet(0x1_0000, 0xffff)),
+            address = AddressSet.misaligned(wrAddr.base, wrAddr.size),
             regionType = RegionType.UNCACHED,
-            supportsPutFull = TransferSizes(4, 64),
-            supportsPutPartial = TransferSizes(4, 64),
-            supportsGet = TransferSizes(4, 64),
+            supportsPutFull = TransferSizes(wrBeatBytes, wrMaxXferBytes),
+            supportsPutPartial = TransferSizes.none,
+            supportsGet = TransferSizes.none,
           ),
         ),
-        beatBytes = 8,
+        beatBytes = wrBeatBytes,
         minLatency = 1,
         endSinkId = 0,
       ),
     ),
   )
 
-  val dmaConfig = LazyModule(new DMAConfig)
-  val dmaCtrl   = LazyModule(new DMACtrl)
+  val configBaseAddr = BigInt(0x1000)
+  val inFlightReq    = 4
+  val dmaConfig = LazyModule(new DMAConfig(configBaseAddr, wrBeatBytes))
+  val dmaCtrl   = LazyModule(new DMACtrl(inFlightReq, math.min(wrBeatBytes * 8, 64)))
   dmaConfig.regNode := clientNode
   dmaRdPortNode     := dmaCtrl.rdClient
   dmaWrPortNode     := dmaCtrl.wrClient
@@ -74,35 +86,38 @@ class DMATopImp(outer: DMATop) extends LazyModuleImp(outer) {
   outer.dmaCtrl.module.io <> outer.dmaConfig.module.io
 }
 
-class DMAConfig(implicit p: Parameters) extends LazyModule {
+class DMAConfig(val base: BigInt, val beatBytes: Int)(implicit p: Parameters) extends LazyModule {
 
   val device = new SimpleDevice("Simple DMA", Seq("DMA"))
 
   val regNode = TLRegisterNode(
-    address = Seq(AddressSet(0x0001000, 0xfff)),
+    address = Seq(AddressSet(base, 0xfff)),
     device = device,
-    beatBytes = 8,
+    beatBytes = math.min(beatBytes, 8),
     concurrency = 1,
   )
 
   lazy val module = new DMAConfigImp(this)
 }
 
-class DMADescriptor extends Bundle {
-  val baseSrcAddr = UInt(64.W)
-  val baseDstAddr = UInt(64.W)
+class DMADescriptor(addrWidth: Int) extends Bundle {
+  val baseSrcAddr = UInt(addrWidth.W)
+  val baseDstAddr = UInt(addrWidth.W)
   val byteLen     = UInt(16.W)
 }
 
 class DMAConfigImp(outer: DMAConfig) extends LazyModuleImp(outer) {
 
+  // Address registers must be programmed in a single write beat and maximum address width is 64
+  val addrWidth = math.min(outer.beatBytes * 8, 64)
+
   val io = IO(new Bundle {
-    val descriptor = Valid(new DMADescriptor)
+    val descriptor = Valid(new DMADescriptor(addrWidth))
     val done       = Input(Bool())
   })
 
-  val baseSrcAddr = Reg(UInt(64.W))
-  val baseDstAddr = Reg(UInt(64.W))
+  val baseSrcAddr = Reg(UInt(addrWidth.W))
+  val baseDstAddr = Reg(UInt(addrWidth.W))
   val length      = Reg(UInt(16.W))
 
   val free = RegInit(true.B)
@@ -156,8 +171,8 @@ class DMAConfigImp(outer: DMAConfig) extends LazyModuleImp(outer) {
   }
 
   outer.regNode.regmap(
-    0x00 -> Seq(RegField(64, baseSrcAddrRdFunc(_), baseSrcAddrWrFunc(_, _))),
-    0x08 -> Seq(RegField(64, baseDstAddrRdFunc(_), baseDstAddrWrFunc(_, _))),
+    0x00 -> Seq(RegField(addrWidth, baseSrcAddrRdFunc(_), baseSrcAddrWrFunc(_, _))),
+    0x08 -> Seq(RegField(addrWidth, baseDstAddrRdFunc(_), baseDstAddrWrFunc(_, _))),
     0x10 -> Seq(RegField(16, byteLenRdFunc(_), byteLenWrFunc(_, _))),
     0x18 -> Seq(RegField.w(1, startDMA(_, _))),
     0x20 -> Seq(RegField.r(1, doneDMA(_))),
@@ -165,10 +180,12 @@ class DMAConfigImp(outer: DMAConfig) extends LazyModuleImp(outer) {
 }
 
 class DMACtrl(
+  val inFlight:  Int,
+  val addrWidth: Int,
+)(
   implicit p: Parameters,
 ) extends LazyModule {
 
-  val inFlight = 4
   val rdClient = new TLClientNode(
     Seq(
       TLMasterPortParameters.v1(
@@ -201,7 +218,7 @@ class DMACtrl(
 class DMACtrlImp(outer: DMACtrl) extends LazyModuleImp(outer) {
 
   val io = IO(new Bundle {
-    val descriptor = Flipped(Valid(new DMADescriptor))
+    val descriptor = Flipped(Valid(new DMADescriptor(outer.addrWidth)))
     val done       = Output(Bool())
   })
 
