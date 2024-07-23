@@ -3,11 +3,13 @@ import freechips.rocketchip.amba.axi4.{
   AXI4MasterNode,
   AXI4MasterParameters,
   AXI4MasterPortParameters,
+  AXI4RAM,
   AXI4SlaveNode,
   AXI4SlaveParameters,
   AXI4SlavePortParameters,
   AXI4ToTL,
   AXI4UserYanker,
+  AXI4Xbar,
 }
 import freechips.rocketchip.devices.tilelink.{DevNullParams, TLError}
 import freechips.rocketchip.diplomacy._
@@ -146,9 +148,23 @@ trait HasAXI4ExtOut { this: AcceleratorShell =>
 }
 
 trait HasSimTLDeviceMem { this: AcceleratorShell =>
-  val ram = LazyModule(
-    new TLRAM(AddressSet.misaligned(memBusParams.base, memBusParams.size).head, beatBytes = memBusParams.beatBytes),
-  )
+  val srams = AddressSet.misaligned(memBusParams.base, memBusParams.size).map { aSet =>
+    LazyModule(new TLRAM(address = aSet, beatBytes = memBusParams.beatBytes))
+  }
+  val xbar = TLXbar()
+  srams.foreach(s => s.node := TLFragmenter(memBusParams.beatBytes, memBusParams.maxXferBytes) := xbar)
+  xbar := deviceMem
+}
 
-  ram.node := TLFragmenter(memBusParams.beatBytes, memBusParams.maxXferBytes) := deviceMem
+trait HasSimAXIDeviceMem { this: AcceleratorShell =>
+  val srams = AddressSet.misaligned(memBusParams.base, memBusParams.size).map { aSet =>
+    LazyModule(new AXI4RAM(address = aSet, beatBytes = memBusParams.beatBytes))
+  }
+  val xbar = AXI4Xbar()
+  srams.foreach(s => s.node := xbar)
+  xbar := AXI4UserYanker() := TLToAXI4() := TLFragmenter(
+    minSize = memBusParams.beatBytes,
+    maxSize = memBusParams.maxXferBytes,
+    holdFirstDeny = true,
+  ) := deviceMem
 }

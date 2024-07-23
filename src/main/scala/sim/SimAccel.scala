@@ -7,7 +7,7 @@ import org.chipsalliance.cde.config._
 
 class SimAccel(implicit p: Parameters)
   extends AcceleratorShell
-  with HasSimTLDeviceMem
+  with HasSimAXIDeviceMem
   with HasHost2AccelAXI4
   with HasHost2DeviceMemAXI4 {
   val rrm = LazyModule(

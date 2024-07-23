@@ -70,8 +70,8 @@ class DMATop(
 
   val configBaseAddr = BigInt(0x1000)
   val inFlightReq    = 4
-  val dmaConfig = LazyModule(new DMAConfig(configBaseAddr, wrBeatBytes))
-  val dmaCtrl   = LazyModule(new DMACtrl(inFlightReq, math.min(wrBeatBytes * 8, 64)))
+  val dmaConfig      = LazyModule(new DMAConfig(configBaseAddr, wrBeatBytes))
+  val dmaCtrl        = LazyModule(new DMACtrl(inFlightReq, math.min(wrBeatBytes * 8, 64)))
   dmaConfig.regNode := clientNode
   dmaRdPortNode     := dmaCtrl.rdClient
   dmaWrPortNode     := dmaCtrl.wrClient
