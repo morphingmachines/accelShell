@@ -10,6 +10,7 @@ class SimAccel(implicit p: Parameters)
   with HasSimAXIDeviceMem
   with HasHost2AccelAXI4
   with HasHost2DeviceMemAXI4 {
+  private val ctrlBusParams = p(HostCtrlBus).get
   val rrm = LazyModule(
     new simpleAccel.DummyBaseRRM(
       ctrlBusParams.base,

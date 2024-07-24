@@ -50,21 +50,17 @@ class DefaultAccelConfig
 
 abstract class AcceleratorShell(implicit p: Parameters) extends LazyModule {
 
-  val memBusParams  = p(HostMemBus).get
-  val ctrlBusParams = p(HostCtrlBus).get
-
   val host2Accel     = TLEphemeralNode()(ValName("Host2Accel"))
   val host2DeviceMem = TLEphemeralNode()(ValName("Host2DeviceMem"))
   val deviceMem      = TLEphemeralNode()(ValName("DRAMAXI4"))
 
   override val module: AcceleratorShellImp[AcceleratorShell]
-
 }
 
 abstract class AcceleratorShellImp[+L <: AcceleratorShell](outer: L) extends LazyModuleImp(outer) {}
 
 trait HasHost2DeviceMemAXI4 { this: AcceleratorShell =>
-
+  private val memBusParams = p(HostMemBus).get
   val extMasterMemNode = AXI4MasterNode(
     Seq(
       AXI4MasterPortParameters(masters =
@@ -95,6 +91,7 @@ trait HasHost2DeviceMemAXI4 { this: AcceleratorShell =>
 }
 
 trait HasHost2AccelAXI4 { this: AcceleratorShell =>
+  private val ctrlBusParams = p(HostCtrlBus).get
   val extMasterCtrlNode = AXI4MasterNode(
     Seq(
       AXI4MasterPortParameters(masters =
@@ -125,6 +122,7 @@ trait HasHost2AccelAXI4 { this: AcceleratorShell =>
 }
 
 trait HasAXI4ExtOut { this: AcceleratorShell =>
+  private val memBusParams = p(HostMemBus).get
   val extSlaveMemNode = AXI4SlaveNode(
     Seq(
       AXI4SlavePortParameters(
@@ -148,6 +146,7 @@ trait HasAXI4ExtOut { this: AcceleratorShell =>
 }
 
 trait HasSimTLDeviceMem { this: AcceleratorShell =>
+  private val memBusParams = p(HostMemBus).get
   val srams = AddressSet.misaligned(memBusParams.base, memBusParams.size).map { aSet =>
     LazyModule(new TLRAM(address = aSet, beatBytes = memBusParams.beatBytes))
   }
@@ -157,6 +156,7 @@ trait HasSimTLDeviceMem { this: AcceleratorShell =>
 }
 
 trait HasSimAXIDeviceMem { this: AcceleratorShell =>
+  private val memBusParams = p(HostMemBus).get
   val srams = AddressSet.misaligned(memBusParams.base, memBusParams.size).map { aSet =>
     LazyModule(new AXI4RAM(address = aSet, beatBytes = memBusParams.beatBytes))
   }

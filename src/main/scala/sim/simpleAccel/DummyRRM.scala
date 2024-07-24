@@ -59,6 +59,7 @@ class DummyRRM(implicit p: Parameters)
   with HasAXI4ExtOut
   with HasHost2DeviceMemAXI4
   with HasHost2AccelAXI4 {
+  private val ctrlBusParams = p(HostCtrlBus).get
   val rrm = LazyModule(
     new DummyBaseRRM(
       ctrlBusParams.base,
