@@ -13,6 +13,7 @@ import freechips.rocketchip.tilelink.{
   TLSlaveParameters,
   TLSlavePortParameters,
 }
+import freechips.rocketchip.util.TwoWayCounter
 import org.chipsalliance.cde.config._
 
 class DMATop(
@@ -123,7 +124,7 @@ class DMAConfigImp(outer: DMAConfig) extends LazyModuleImp(outer) {
   val free = RegInit(true.B)
 
   io.descriptor.bits.baseSrcAddr := baseSrcAddr
-  io.descriptor.bits.baseDstAddr := baseSrcAddr
+  io.descriptor.bits.baseDstAddr := baseDstAddr
   io.descriptor.bits.byteLen     := length
 
   when(io.done) {
@@ -282,14 +283,15 @@ class DMACtrlImp(outer: DMACtrl) extends LazyModuleImp(outer) {
   val wr_d                                  = wr_d_q.io.deq
   val (wr_d_first, wr_d_last, wr_resp_done) = wrEdge.firstlast(wr_d)
 
-  val idMap = Module(new IDMapGenerator(outer.inFlight))
-  val srcId = idMap.io.alloc.bits
+  val idMap      = Module(new IDMapGenerator(outer.inFlight))
+  val wrInFlight = TwoWayCounter(wr_a.fire, wr_d.fire, outer.inFlight)
+  val srcId      = idMap.io.alloc.bits
 
   val rdPending = rdBytes =/= io.descriptor.bits.byteLen
   val wrPending = wrBytes =/= io.descriptor.bits.byteLen
 
-  idMap.io.alloc.ready := rdPending && rd_a.ready // Hold source-Id until the read request beat is sent
-  idMap.io.free.valid  := wr_resp_done            // Free source-Id after receiving the wr resp. beat associated with it
+  idMap.io.alloc.ready := rdPending && rd_a.ready && descriptorValid // Hold source-Id until the read request beat is sent
+  idMap.io.free.valid  := wr_resp_done                               // Free source-Id after receiving the wr resp. beat associated with it
   idMap.io.free.bits   := wr_d.bits.source
 
   // -- Generate read requests to the source address ----
@@ -319,12 +321,12 @@ class DMACtrlImp(outer: DMACtrl) extends LazyModuleImp(outer) {
   rd_d.ready := wr_a.ready
 
   wr_d.ready := true.B
-  when(wr_d.fire) {
-    wrBytes := wrBytes + (1.U(16.W) << wr_d.bits.size)
+  when(wr_a.fire) {
+    wrBytes := wrBytes + (1.U(16.W) << wr_a.bits.size)
   }
 
   io.done := false.B
-  when(descriptorValid && !wrPending) {
+  when(descriptorValid && !wrPending && wrInFlight === 0.U) {
     io.done         := true.B
     descriptorValid := false.B
   }
