@@ -100,7 +100,7 @@ module SimAccelTop #(
       .hostCtrl_0_aw_bits_id(hostCtrl_awid),
       .hostCtrl_0_aw_bits_addr(hostCtrl_awaddr),
       .hostCtrl_0_aw_bits_len(hostCtrl_awlen),
-      .hostCtrl_0_aw_bits_size(hostCtrl_awburst),
+      .hostCtrl_0_aw_bits_size(hostCtrl_awsize),
       .hostCtrl_0_aw_bits_burst(hostCtrl_awburst),
       .hostCtrl_0_aw_bits_lock(hostCtrl_awlock),
       .hostCtrl_0_aw_bits_cache(hostCtrl_awcache),
