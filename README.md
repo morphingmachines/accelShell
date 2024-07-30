@@ -40,7 +40,7 @@ The output verilog files are generated in the `./generated_sv_dir` directory. Th
 ## Simulation
 To run simulations, you need to install the following [dependencies](./doc/dependencies.md)
 
-We use [Switchbox](https://github.com/zeroasiccorp/switchboard) to provide stimulus to the accelerator module. All the stimulus generation sources are in `./sb_sim` directory. Refer to `./sb_sim/SimDeviceMem` for more details.
+We use [Switchboard](https://github.com/zeroasiccorp/switchboard) to provide stimulus to the accelerator module. All the stimulus generation sources are in `./sb_sim` directory. Refer to `./sb_sim/SimDeviceMem` for more details.
 
 After generating the RTL, follow the below steps to run the simulation.
 ```sh
