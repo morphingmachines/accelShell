@@ -44,6 +44,6 @@ We use [Switchboard](https://github.com/zeroasiccorp/switchboard) to provide sti
 
 After generating the RTL, follow the below steps to run the simulation.
 ```sh
-$ cd sb_sim/SimDeviceMem
+$ cd sb_sim/SimDeviceMem # sb_sim/SimAccel
 $ make 
 ```

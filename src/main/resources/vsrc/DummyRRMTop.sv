@@ -4,7 +4,7 @@ module DummyRRMTop #(
     parameter HOSTCTRL_DATA_WIDTH = 32,
     // Width of hostCtrl address bus in bits
     parameter HOSTCTRL_ADDR_WIDTH = 16,
-    // Width of hostCtrl wstrb 
+    // Width of hostCtrl wstrb
     parameter HOSTCTRL_STRB_WIDTH = (HOSTCTRL_DATA_WIDTH / 8),
     // Width of hostCtrl ID signal
     parameter HOSTCTRL_ID_WIDTH = 8,
@@ -12,7 +12,7 @@ module DummyRRMTop #(
     parameter HOSTMEM_DATA_WIDTH = 32,
     // Width of dma address bus in bits
     parameter HOSTMEM_ADDR_WIDTH = 16,
-    // Width of dma wstrb 
+    // Width of dma wstrb
     parameter HOSTMEM_STRB_WIDTH = (HOSTMEM_DATA_WIDTH / 8),
     // Width of dma ID signal
     parameter HOSTMEM_ID_WIDTH = 8,
@@ -20,7 +20,7 @@ module DummyRRMTop #(
     parameter MEM_DATA_WIDTH = 32,
     // Width of mem address bus in bits
     parameter MEM_ADDR_WIDTH = 16,
-    // Width of mem wstrb 
+    // Width of mem wstrb
     parameter MEM_STRB_WIDTH = (MEM_DATA_WIDTH / 8),
     // Width of mem ID signal
     parameter MEM_ID_WIDTH = 8
@@ -40,7 +40,7 @@ module DummyRRMTop #(
     input  wire [                    2:0] hostCtrl_awprot,
     output wire                           hostCtrl_wready,
     input  wire                           hostCtrl_wvalid,
-    input  wire [ HOSTCTRL_DATA_WIDTH-1:0] hostCtrl_wdata,
+    input  wire [HOSTCTRL_DATA_WIDTH-1:0] hostCtrl_wdata,
     input  wire [HOSTCTRL_STRB_WIDTH-1:0] hostCtrl_wstrb,
     input  wire                           hostCtrl_wlast,
     input  wire                           hostCtrl_bready,
@@ -60,7 +60,7 @@ module DummyRRMTop #(
     input  wire                           hostCtrl_rready,
     output wire                           hostCtrl_rvalid,
     output wire [  HOSTCTRL_ID_WIDTH-1:0] hostCtrl_rid,
-    output wire [ HOSTCTRL_DATA_WIDTH-1:0] hostCtrl_rdata,
+    output wire [HOSTCTRL_DATA_WIDTH-1:0] hostCtrl_rdata,
     output wire [                    1:0] hostCtrl_rresp,
     output wire                           hostCtrl_rlast,
     output wire                           hostMem_awready,
@@ -75,7 +75,7 @@ module DummyRRMTop #(
     input  wire [                    2:0] hostMem_awprot,
     output wire                           hostMem_wready,
     input  wire                           hostMem_wvalid,
-    input  wire [  HOSTMEM_DATA_WIDTH-1:0] hostMem_wdata,
+    input  wire [ HOSTMEM_DATA_WIDTH-1:0] hostMem_wdata,
     input  wire [ HOSTMEM_STRB_WIDTH-1:0] hostMem_wstrb,
     input  wire                           hostMem_wlast,
     input  wire                           hostMem_bready,
@@ -95,7 +95,7 @@ module DummyRRMTop #(
     input  wire                           hostMem_rready,
     output wire                           hostMem_rvalid,
     output wire [   HOSTMEM_ID_WIDTH-1:0] hostMem_rid,
-    output wire [  HOSTMEM_DATA_WIDTH-1:0] hostMem_rdata,
+    output wire [ HOSTMEM_DATA_WIDTH-1:0] hostMem_rdata,
     output wire [                    1:0] hostMem_rresp,
     output wire                           hostMem_rlast,
     input  wire                           mem_aw_ready,
@@ -134,7 +134,7 @@ module DummyRRMTop #(
     output wire [                    3:0] mem_ar_bits_cache,
     output wire [                    2:0] mem_r_bits_prot,
     output wire [                    3:0] mem_ar_bits_qos,
-    output wire                           mem_r_ready  
+    output wire                           mem_r_ready
 );
 
   DummyRRM dummyRRM (
@@ -145,7 +145,7 @@ module DummyRRMTop #(
       .hostCtrl_0_aw_bits_id(hostCtrl_awid),
       .hostCtrl_0_aw_bits_addr(hostCtrl_awaddr),
       .hostCtrl_0_aw_bits_len(hostCtrl_awlen),
-      .hostCtrl_0_aw_bits_size(hostCtrl_awburst),
+      .hostCtrl_0_aw_bits_size(hostCtrl_awsize),
       .hostCtrl_0_aw_bits_burst(hostCtrl_awburst),
       .hostCtrl_0_aw_bits_lock(hostCtrl_awlock),
       .hostCtrl_0_aw_bits_cache(hostCtrl_awcache),
@@ -220,12 +220,12 @@ module DummyRRMTop #(
       .mem_0_b_bits_id(mem_b_bits_id),
       .mem_0_b_bits_resp(mem_b_bits_resp),
       .mem_0_ar_ready(mem_ar_ready),
-      .mem_0_r_valid(mem_r_valid),  
+      .mem_0_r_valid(mem_r_valid),
       .mem_0_r_bits_id(mem_r_bits_id),
       .mem_0_r_bits_data(mem_r_bits_data),
       .mem_0_r_bits_resp(mem_r_bits_resp),
       .mem_0_r_bits_last(mem_r_bits_last),
-      .mem_0_aw_bits_id(mem_aw_bits_id),  
+      .mem_0_aw_bits_id(mem_aw_bits_id),
       .mem_0_aw_bits_addr(mem_aw_bits_addr),
       .mem_0_aw_bits_len(mem_aw_bits_len),
       .mem_0_aw_valid(mem_aw_valid),
@@ -250,6 +250,6 @@ module DummyRRMTop #(
       .mem_0_ar_bits_cache(mem_ar_bits_cache),
       .mem_0_ar_bits_prot(mem_ar_bits_prot),
       .mem_0_ar_bits_qos(mem_ar_bits_qos),
-      .mem_0_r_ready(mem_r_ready)     
+      .mem_0_r_ready(mem_r_ready)
   );
 endmodule
