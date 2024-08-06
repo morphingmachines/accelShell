@@ -141,7 +141,7 @@ object accelShellMain extends App with LazyToplevel {
   val str = if (args.length == 0) "" else args(0)
   val lazyTop = str match {
     // case "DMA"      => LazyModule(new accelShell.sim.simpleAccel.DMATop()(Parameters.empty))
-    case "RRM"        => LazyModule(new accelShell.sim.simpleAccel.DummyRRM()(new Config(new DefaultAccelConfig)))
+    case "RRM"        => LazyModule(new accelShell.sim.simpleAccel.DummyRRM()(new Config(new DummyRRMConfig)))
     case "SimAccel"   => LazyModule(new accelShell.sim.SimAccel()(new Config(new DefaultAccelConfig)))
     case "SimMem"     => LazyModule(new accelShell.sim.SimDeviceMem()(new Config(new DefaultAccelConfig)))
     case "SimAXI4Mem" => LazyModule(new accelShell.sim.SimAXI4DeviceMem()(new Config(new DefaultAccelConfig)))

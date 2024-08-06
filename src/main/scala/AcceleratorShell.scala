@@ -1,28 +1,44 @@
 package accelShell
-import freechips.rocketchip.amba.axi4.{
-  AXI4MasterNode,
-  AXI4MasterParameters,
-  AXI4MasterPortParameters,
-  AXI4RAM,
-  AXI4SlaveNode,
-  AXI4SlaveParameters,
-  AXI4SlavePortParameters,
-  AXI4ToTL,
-  AXI4UserYanker,
-  AXI4Xbar,
-}
+import chisel3.util.isPow2
+import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.devices.tilelink.{DevNullParams, TLError}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.subsystem.MasterPortParams
-import freechips.rocketchip.tilelink.{TLEphemeralNode, TLFIFOFixer, TLFragmenter, TLRAM, TLToAXI4, TLXbar}
+import freechips.rocketchip.tilelink._
 import org.chipsalliance.cde.config._
 
 case object Host2AccelNodeKey extends Field[Option[TLEphemeralNode]](None)
 case object Host2MemNodeKey   extends Field[Option[TLEphemeralNode]](None)
 case object ExtMemNodeKey     extends Field[Option[TLEphemeralNode]](None)
 
-case object HostMemBus  extends Field[Option[MasterPortParams]](None)
-case object HostCtrlBus extends Field[Option[MasterPortParams]](None)
+case object HostMemBus        extends Field[Option[MasterPortParams]](None)
+case object HostCtrlBus       extends Field[Option[MasterPortParams]](None)
+case object NumMemoryChannels extends Field[Int](1)
+
+class DummyRRMConfig
+  extends Config((_, _, _) => {
+    case NumMemoryChannels => 2
+    case HostMemBus =>
+      Some(
+        new MasterPortParams(
+          base = BigInt(0x0000_0000),
+          size = BigInt(0x1_0000_0000L),
+          beatBytes = 8,
+          idBits = 2,
+          maxXferBytes = 8,
+        ),
+      )
+    case HostCtrlBus =>
+      Some(
+        new MasterPortParams(
+          base = BigInt(0x1_0000_0000L),
+          size = BigInt(0x2000),
+          beatBytes = 8,
+          idBits = 2,
+          maxXferBytes = 8,
+        ),
+      )
+  })
 
 class DefaultAccelConfig
   extends Config((_, _, _) => {
@@ -79,7 +95,11 @@ trait HasHost2DeviceMemAXI4 { this: AcceleratorShell =>
 
   val extMasterMemErrorDevice = LazyModule(
     new TLError(
-      DevNullParams(address = Seq(AddressSet(0, 0xfff)), maxAtomic = 4, maxTransfer = memBusParams.maxXferBytes),
+      DevNullParams(
+        address = Seq(AddressSet(memBusParams.base + memBusParams.size, 0xfff)),
+        maxAtomic = 4,
+        maxTransfer = memBusParams.maxXferBytes,
+      ),
       beatBytes = memBusParams.beatBytes,
     ),
   )
@@ -110,7 +130,11 @@ trait HasHost2AccelAXI4 { this: AcceleratorShell =>
 
   val extMasterCtrlErrorDevice = LazyModule(
     new TLError(
-      DevNullParams(address = Seq(AddressSet(0, 0xfff)), maxAtomic = 4, maxTransfer = ctrlBusParams.maxXferBytes),
+      DevNullParams(
+        address = Seq(AddressSet(ctrlBusParams.base + ctrlBusParams.size, 0xfff)),
+        maxAtomic = 4,
+        maxTransfer = ctrlBusParams.maxXferBytes,
+      ),
       beatBytes = ctrlBusParams.beatBytes,
     ),
   )
@@ -123,26 +147,30 @@ trait HasHost2AccelAXI4 { this: AcceleratorShell =>
 
 trait HasAXI4ExtOut { this: AcceleratorShell =>
   private val memBusParams = p(HostMemBus).get
-  val extSlaveMemNode = AXI4SlaveNode(
-    Seq(
-      AXI4SlavePortParameters(
-        Seq(
-          AXI4SlaveParameters(
-            address = AddressSet.misaligned(memBusParams.base, memBusParams.size),
-            regionType = RegionType.UNCACHED,
-            supportsWrite = TransferSizes(1, memBusParams.maxXferBytes),
-            supportsRead = TransferSizes(1, memBusParams.maxXferBytes),
-            interleavedId = Some(0),
-          ),
+  require(isPow2(memBusParams.size))
+  require(isPow2(p(NumMemoryChannels)))
+
+  val memPortSize = memBusParams.size / p(NumMemoryChannels)
+  val axiMemPorts = Seq.tabulate(p(NumMemoryChannels)) { i =>
+    AXI4SlavePortParameters(
+      Seq(
+        AXI4SlaveParameters(
+          address = AddressSet.misaligned(memBusParams.base + memPortSize * i, memPortSize),
+          regionType = RegionType.UNCACHED,
+          supportsWrite = TransferSizes(1, memBusParams.maxXferBytes),
+          supportsRead = TransferSizes(1, memBusParams.maxXferBytes),
+          interleavedId = Some(0),
         ),
-        beatBytes = memBusParams.beatBytes,
-        minLatency = 1,
       ),
-    ),
-  )
+      beatBytes = memBusParams.beatBytes,
+      minLatency = 1,
+    )
+  }
+
+  val extSlaveMemNode = AXI4SlaveNode(axiMemPorts)
 
   val mem = InModuleBody(extSlaveMemNode.makeIOs())
-  extSlaveMemNode := AXI4UserYanker() := TLToAXI4() := deviceMem
+  extSlaveMemNode :*= AXI4Xbar() := AXI4UserYanker() := TLToAXI4() := deviceMem
 }
 
 trait HasSimTLDeviceMem { this: AcceleratorShell =>
