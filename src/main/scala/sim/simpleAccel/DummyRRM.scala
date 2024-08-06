@@ -1,7 +1,7 @@
 package accelShell.sim.simpleAccel
 import accelShell._
 import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.tilelink.{TLFragmenter, TLRAM, TLXbar}
+import freechips.rocketchip.tilelink.{TLFragmenter, TLRAM, TLWidthWidget, TLXbar}
 import org.chipsalliance.cde.config._
 
 /** DummyBaseRRM is true to the RRM interfaces.
@@ -40,9 +40,13 @@ class DummyBaseRRM(base: BigInt, size: BigInt, beatBytes: Int, maxXferBytes: Int
 
   outputXbar.node := dmaCtrl.rdClient
 
-  bramXbar.node     := dmaCtrl.wrClient
-  bramXbar.node     := inputXbar.node
-  dmaConfig.regNode := inputXbar.node
+  bramXbar.node := dmaCtrl.wrClient
+  bramXbar.node := inputXbar.node
+  if (beatBytes > 8) {
+    dmaConfig.regNode := TLFragmenter(8, beatBytes) := TLWidthWidget(beatBytes) := inputXbar.node
+  } else {
+    dmaConfig.regNode := inputXbar.node
+  }
 
   bram.node := TLFragmenter(beatBytes, maxXferBytes) := bramXbar.node
 
