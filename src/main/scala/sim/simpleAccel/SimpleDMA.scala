@@ -321,7 +321,7 @@ class DMACtrlImp(outer: DMACtrl) extends LazyModuleImp(outer) {
   rd_d.ready := wr_a.ready
 
   wr_d.ready := true.B
-  when(wr_a.fire) {
+  when(wr_a.fire && wr_a_last) {
     wrBytes := wrBytes + (1.U(16.W) << wr_a.bits.size)
   }
 
