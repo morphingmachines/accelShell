@@ -261,13 +261,13 @@ class DMACtrlImp(outer: DMACtrl) extends LazyModuleImp(outer) {
   val rdAddressSet = rdEdge.manager.managers.flatMap(_.address)
   wrAddressSet.map(x => rdAddressSet.map(y => require(!x.overlaps(y))))
 
-  val rd_a_q = Module(new Queue(rdOut.a.bits.cloneType, entries = 1, pipe = true))
-  val rd_d_q = Module(new Queue(rdOut.d.bits.cloneType, entries = 1, pipe = true))
+  val rd_a_q = Module(new Queue(rdOut.a.bits.cloneType, entries = 2))
+  val rd_d_q = Module(new Queue(rdOut.d.bits.cloneType, entries = 2))
   rdOut.a <> rd_a_q.io.deq
   rd_d_q.io.enq <> rdOut.d
 
-  val wr_a_q = Module(new Queue(wrOut.a.bits.cloneType, entries = 1, pipe = true))
-  val wr_d_q = Module(new Queue(wrOut.d.bits.cloneType, entries = 1, pipe = true))
+  val wr_a_q = Module(new Queue(wrOut.a.bits.cloneType, entries = 2))
+  val wr_d_q = Module(new Queue(wrOut.d.bits.cloneType, entries = 2))
   wrOut.a <> wr_a_q.io.deq
   wr_d_q.io.enq <> wrOut.d
 
