@@ -38,7 +38,7 @@ trait Toplevel {
       s"${out_dir}.fir",
       "--disable-annotation-unknown",
       "--split-verilog",
-      "--strip-debug-info",
+      //"--strip-debug-info",
       "--lower-memories",
       s"-o=${out_dir}",
       s"--output-annotation-file=${out_dir}/${topModule_name}.anno.json",
@@ -135,7 +135,6 @@ trait WithLazyModuleDUT { this: VerilateTestHarness with LazyToplevel =>
   * mill accelShell.runMain accelShell.accelShellMain SimMem
   * }}}
   */
-
 object accelShellMain extends App with LazyToplevel {
   // import org.chipsalliance.cde.config.Parameters
   val str = if (args.length == 0) "" else args(0)
