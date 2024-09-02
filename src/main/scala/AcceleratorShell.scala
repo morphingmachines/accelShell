@@ -22,9 +22,9 @@ class DummyRRMConfig
       Some(
         new MasterPortParams(
           base = BigInt(0x0000_0000),
-          size = BigInt(0x1_0000_0000L),
+          size = BigInt(0x1_0000L),
           beatBytes = 64,
-          idBits = 2,
+          idBits = 4,
           maxXferBytes = 64,
         ),
       )
@@ -34,7 +34,7 @@ class DummyRRMConfig
           base = BigInt(0x1_0000_0000L),
           size = BigInt(0x2000),
           beatBytes = 64,
-          idBits = 2,
+          idBits = 4,
           maxXferBytes = 64,
         ),
       )
@@ -97,7 +97,7 @@ trait HasHost2DeviceMemAXI4 { this: AcceleratorShell =>
     new TLError(
       DevNullParams(
         address = Seq(AddressSet(memBusParams.base + memBusParams.size, 0xfff)),
-        maxAtomic = 4,
+        maxAtomic = 0,
         maxTransfer = memBusParams.maxXferBytes,
       ),
       beatBytes = memBusParams.beatBytes,
@@ -106,8 +106,8 @@ trait HasHost2DeviceMemAXI4 { this: AcceleratorShell =>
 
   val extMasterMemXbar = LazyModule(new TLXbar)
   extMasterMemXbar.node        := TLFIFOFixer(TLFIFOFixer.allFIFO) := AXI4ToTL() := AXI4Buffer() := extMasterMemNode
-  extMasterMemErrorDevice.node := extMasterMemXbar.node
-  host2DeviceMem               := extMasterMemXbar.node
+  extMasterMemErrorDevice.node := TLBuffer() := extMasterMemXbar.node
+  host2DeviceMem               := TLBuffer() := extMasterMemXbar.node
 }
 
 trait HasHost2AccelAXI4 { this: AcceleratorShell =>
@@ -132,7 +132,7 @@ trait HasHost2AccelAXI4 { this: AcceleratorShell =>
     new TLError(
       DevNullParams(
         address = Seq(AddressSet(ctrlBusParams.base + ctrlBusParams.size, 0xfff)),
-        maxAtomic = 4,
+        maxAtomic = 0,
         maxTransfer = ctrlBusParams.maxXferBytes,
       ),
       beatBytes = ctrlBusParams.beatBytes,
@@ -141,8 +141,8 @@ trait HasHost2AccelAXI4 { this: AcceleratorShell =>
 
   val ctrlInputXbar = LazyModule(new TLXbar)
   ctrlInputXbar.node            := TLFIFOFixer(TLFIFOFixer.allFIFO) := AXI4ToTL() := AXI4Buffer() := extMasterCtrlNode
-  extMasterCtrlErrorDevice.node := ctrlInputXbar.node
-  host2Accel                    := ctrlInputXbar.node
+  extMasterCtrlErrorDevice.node := TLBuffer() := ctrlInputXbar.node
+  host2Accel                    := TLBuffer() := ctrlInputXbar.node
 }
 
 trait HasAXI4ExtOut { this: AcceleratorShell =>

@@ -3,6 +3,7 @@ import accelShell._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink.{TLFragmenter, TLRAM, TLWidthWidget, TLXbar}
 import org.chipsalliance.cde.config._
+import chisel3.util.log2Ceil
 
 /** DummyBaseRRM is true to the RRM interfaces.
   * -> Slave interface : Used by the Host to configure and control the RRM
@@ -35,8 +36,13 @@ class DummyBaseRRM(base: BigInt, size: BigInt, beatBytes: Int, maxXferBytes: Int
   val inputXbar  = LazyModule(new TLXbar)
   val outputXbar = LazyModule(new TLXbar)
 
-  val dmaConfig = LazyModule(new DMAConfig(base, beatBytes))
-  val dmaCtrl   = LazyModule(new DMACtrl(4, math.min(beatBytes * 8, 64)))
+  val extMemIfcParams = p(HostMemBus).get
+  val extMemAddrWidth = log2Ceil(extMemIfcParams.base + extMemIfcParams.size)
+
+  val internalMemAddrWidth = log2Ceil(base+size)
+    
+  val dmaConfig = LazyModule(new DMAConfig(base, beatBytes, extMemAddrWidth, internalMemAddrWidth))
+  val dmaCtrl   = LazyModule(new DMACtrl(4, extMemAddrWidth, internalMemAddrWidth))
 
   outputXbar.node := dmaCtrl.rdClient
 

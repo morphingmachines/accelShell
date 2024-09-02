@@ -50,6 +50,8 @@ class DMATop(
     ),
   )
 
+  val extMemAddrWidth = log2Ceil(rdAddr.end+1)
+
   val dmaWrPortNode = TLManagerNode(
     Seq(
       TLSlavePortParameters.v1(
@@ -69,10 +71,13 @@ class DMATop(
     ),
   )
 
+  val internalMemAddrWidth = log2Ceil(wrAddr.end+1)
+
   val configBaseAddr = BigInt(0x1000)
   val inFlightReq    = 4
-  val dmaConfig      = LazyModule(new DMAConfig(configBaseAddr, wrBeatBytes))
-  val dmaCtrl        = LazyModule(new DMACtrl(inFlightReq, math.min(wrBeatBytes * 8, 64)))
+  val dmaConfig      = LazyModule(new DMAConfig(configBaseAddr, wrBeatBytes, extMemAddrWidth, internalMemAddrWidth))
+  val dmaCtrl        = LazyModule(new DMACtrl(inFlightReq, extMemAddrWidth, internalMemAddrWidth))
+
   dmaConfig.regNode := clientNode
   dmaRdPortNode     := dmaCtrl.rdClient
   dmaWrPortNode     := dmaCtrl.wrClient
@@ -87,7 +92,7 @@ class DMATopImp(outer: DMATop) extends LazyModuleImp(outer) {
   outer.dmaCtrl.module.io <> outer.dmaConfig.module.io
 }
 
-class DMAConfig(val base: BigInt, val beatBytes: Int)(implicit p: Parameters) extends LazyModule {
+class DMAConfig(val base: BigInt, val beatBytes: Int, val srcAddrWidth: Int, val dstAddrWidth: Int)(implicit p: Parameters) extends LazyModule {
 
   val device = new SimpleDevice("Simple DMA", Seq("DMA"))
 
@@ -101,30 +106,29 @@ class DMAConfig(val base: BigInt, val beatBytes: Int)(implicit p: Parameters) ex
   lazy val module = new DMAConfigImp(this)
 }
 
-class DMADescriptor(addrWidth: Int) extends Bundle {
-  val baseSrcAddr = UInt(addrWidth.W)
-  val baseDstAddr = UInt(addrWidth.W)
+class DMADescriptor(srcAddrWidth: Int, dstAddrWidth: Int) extends Bundle {
+  val baseSrcAddr = UInt(srcAddrWidth.W)
+  val baseDstAddr = UInt(dstAddrWidth.W)
   val byteLen     = UInt(16.W)
 }
 
 class DMAConfigImp(outer: DMAConfig) extends LazyModuleImp(outer) {
 
-  // Address registers must be programmed in a single write beat and maximum address width is 64
-  val addrWidth = math.min(outer.beatBytes * 8, 64)
-
   val io = IO(new Bundle {
-    val descriptor = Valid(new DMADescriptor(addrWidth))
+    val descriptor = Valid(new DMADescriptor(outer.srcAddrWidth, outer.dstAddrWidth))
     val done       = Input(Bool())
   })
 
-  val baseSrcAddr = Reg(UInt(addrWidth.W))
-  val baseDstAddr = Reg(UInt(addrWidth.W))
+  val baseSrcAddrLow  = Reg(UInt(32.W))
+  val baseSrcAddrHigh = Reg(UInt(32.W))
+  val baseDstAddrLow  = Reg(UInt(32.W))
+  val baseDstAddrHigh = Reg(UInt(32.W))
   val length      = Reg(UInt(16.W))
 
   val free = RegInit(true.B)
 
-  io.descriptor.bits.baseSrcAddr := baseSrcAddr
-  io.descriptor.bits.baseDstAddr := baseDstAddr
+  io.descriptor.bits.baseSrcAddr := Cat(baseSrcAddrHigh, baseSrcAddrLow)
+  io.descriptor.bits.baseDstAddr := Cat(baseDstAddrHigh, baseDstAddrLow)
   io.descriptor.bits.byteLen     := length
 
   when(io.done) {
@@ -143,22 +147,40 @@ class DMAConfigImp(outer: DMAConfig) extends LazyModuleImp(outer) {
   def doneDMA(@annotation.unused valid: Bool): (Bool, UInt) =
     (true.B, free)
 
-  def baseSrcAddrRdFunc(@annotation.unused ready: Bool): (Bool, UInt) = (true.B, baseSrcAddr)
-  def baseDstAddrRdFunc(@annotation.unused ready: Bool): (Bool, UInt) = (true.B, baseDstAddr)
+  def baseSrcAddrLowRdFunc(@annotation.unused ready: Bool): (Bool, UInt) = (true.B, baseSrcAddrLow)
+  def baseSrcAddrHighRdFunc(@annotation.unused ready: Bool): (Bool, UInt) = (true.B, baseSrcAddrHigh)
+  def baseDstAddrLowRdFunc(@annotation.unused ready: Bool): (Bool, UInt) = (true.B, baseDstAddrLow)
+  def baseDstAddrHighRdFunc(@annotation.unused ready: Bool): (Bool, UInt) = (true.B, baseDstAddrHigh)
   def byteLenRdFunc(@annotation.unused ready:     Bool): (Bool, UInt) = (true.B, length)
 
-  def baseSrcAddrWrFunc(valid: Bool, bits: UInt): Bool = {
+  def baseSrcAddrLowWrFunc(valid: Bool, bits: UInt): Bool = {
     when(valid) {
       assert(free, "New DMA request received before completing the previous DMA")
-      baseSrcAddr := bits
+      baseSrcAddrLow := bits
     }
     true.B
   }
 
-  def baseDstAddrWrFunc(valid: Bool, bits: UInt): Bool = {
+  def baseSrcAddrHighWrFunc(valid: Bool, bits: UInt): Bool = {
     when(valid) {
       assert(free, "New DMA request received before completing the previous DMA")
-      baseDstAddr := bits
+      baseSrcAddrHigh := bits
+    }
+    true.B
+  }
+
+  def baseDstAddrLowWrFunc(valid: Bool, bits: UInt): Bool = {
+    when(valid) {
+      assert(free, "New DMA request received before completing the previous DMA")
+      baseDstAddrLow := bits
+    }
+    true.B
+  }
+
+  def baseDstAddrHighWrFunc(valid: Bool, bits: UInt): Bool = {
+    when(valid) {
+      assert(free, "New DMA request received before completing the previous DMA")
+      baseDstAddrHigh := bits
     }
     true.B
   }
@@ -172,8 +194,10 @@ class DMAConfigImp(outer: DMAConfig) extends LazyModuleImp(outer) {
   }
 
   outer.regNode.regmap(
-    0x00 -> Seq(RegField(addrWidth, baseSrcAddrRdFunc(_), baseSrcAddrWrFunc(_, _))),
-    0x08 -> Seq(RegField(addrWidth, baseDstAddrRdFunc(_), baseDstAddrWrFunc(_, _))),
+    0x00 -> Seq(RegField(32, baseSrcAddrLowRdFunc(_), baseSrcAddrLowWrFunc(_, _))),
+    0x04 -> Seq(RegField(32, baseSrcAddrHighRdFunc(_), baseSrcAddrHighWrFunc(_, _))),
+    0x08 -> Seq(RegField(32, baseDstAddrLowRdFunc(_), baseDstAddrLowWrFunc(_, _))),
+    0x0C -> Seq(RegField(32, baseDstAddrHighRdFunc(_), baseDstAddrHighWrFunc(_, _))),
     0x10 -> Seq(RegField(16, byteLenRdFunc(_), byteLenWrFunc(_, _))),
     0x18 -> Seq(RegField.w(1, startDMA(_, _))),
     0x20 -> Seq(RegField.r(1, doneDMA(_))),
@@ -182,7 +206,8 @@ class DMAConfigImp(outer: DMAConfig) extends LazyModuleImp(outer) {
 
 class DMACtrl(
   val inFlight:  Int,
-  val addrWidth: Int,
+  val srcAddrWidth: Int,
+  val dstAddrWidth: Int,
 )(
   implicit p: Parameters,
 ) extends LazyModule {
@@ -219,7 +244,7 @@ class DMACtrl(
 class DMACtrlImp(outer: DMACtrl) extends LazyModuleImp(outer) {
 
   val io = IO(new Bundle {
-    val descriptor = Flipped(Valid(new DMADescriptor(outer.addrWidth)))
+    val descriptor = Flipped(Valid(new DMADescriptor(outer.srcAddrWidth, outer.dstAddrWidth)))
     val done       = Output(Bool())
   })
 
