@@ -93,7 +93,7 @@ def build_testbench():
 
     parameters = dict(
         HOSTMEM_DATA_WIDTH=32,
-        HOSTMEM_ADDR_WIDTH=17,
+        HOSTMEM_ADDR_WIDTH=18,
         HOSTMEM_ID_WIDTH=2,
         HOSTCTRL_DATA_WIDTH=32,
         HOSTCTRL_ADDR_WIDTH=18,
@@ -101,8 +101,8 @@ def build_testbench():
     )
 
     interfaces = {
-        'hostMem': dict(type='axi', dw=32, aw=17, idw=2, direction='subordinate'),
-        'hostCtrl': dict(type='axi', dw=32, aw=18, idw=2, direction='subordinate')
+        'hostMem': dict(type='axi', dw=parameters['HOSTMEM_DATA_WIDTH'], aw=parameters['HOSTMEM_ADDR_WIDTH'], idw=parameters['HOSTMEM_ID_WIDTH'], direction='subordinate'),
+        'hostCtrl': dict(type='axi', dw=parameters['HOSTCTRL_DATA_WIDTH'], aw=parameters['HOSTCTRL_ADDR_WIDTH'], idw=parameters['HOSTCTRL_ID_WIDTH'], direction='subordinate')
     }
 
     resets = [dict(name='rst', delay=0)]
