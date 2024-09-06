@@ -168,6 +168,8 @@ module SimAccelTop #(
       .hostMem_0_r_bits_id(hostMem_rid),
       .hostMem_0_r_bits_data(hostMem_rdata),
       .hostMem_0_r_bits_resp(hostMem_rresp),
-      .hostMem_0_r_bits_last(hostMem_rlast)
+      .hostMem_0_r_bits_last(hostMem_rlast),
+      .io_accelDomain_clock(clk),
+      .io_accelDomain_reset(rst)
   );
 endmodule

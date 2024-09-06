@@ -1,9 +1,13 @@
 package accelShell.sim.simpleAccel
+
 import accelShell._
+import chisel3._
+import chisel3.util.log2Ceil
 import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.prci.ClockBundle
+import freechips.rocketchip.subsystem.CrossingWrapper
 import freechips.rocketchip.tilelink.{TLFragmenter, TLRAM, TLWidthWidget, TLXbar}
 import org.chipsalliance.cde.config._
-import chisel3.util.log2Ceil
 
 /** DummyBaseRRM is true to the RRM interfaces.
   * -> Slave interface : Used by the Host to configure and control the RRM
@@ -39,8 +43,8 @@ class DummyBaseRRM(base: BigInt, size: BigInt, beatBytes: Int, maxXferBytes: Int
   val extMemIfcParams = p(HostMemBus).get
   val extMemAddrWidth = log2Ceil(extMemIfcParams.base + extMemIfcParams.size)
 
-  val internalMemAddrWidth = log2Ceil(base+size)
-    
+  val internalMemAddrWidth = log2Ceil(base + size)
+
   val dmaConfig = LazyModule(new DMAConfig(base, beatBytes, extMemAddrWidth, internalMemAddrWidth))
   val dmaCtrl   = LazyModule(new DMACtrl(4, extMemAddrWidth, internalMemAddrWidth))
 
@@ -70,21 +74,31 @@ class DummyRRM(implicit p: Parameters)
   with HasHost2DeviceMemAXI4
   with HasHost2AccelAXI4 {
   private val ctrlBusParams = p(HostCtrlBus).get
-  val rrm = LazyModule(
-    new DummyBaseRRM(
-      ctrlBusParams.base,
-      ctrlBusParams.size,
-      ctrlBusParams.beatBytes,
-      ctrlBusParams.maxXferBytes,
+
+  val params = AsynchronousCrossing(safe = false, narrow = true)
+  val island = LazyModule(new CrossingWrapper(params))
+
+  val rrm = island(
+    LazyModule(
+      new DummyBaseRRM(
+        ctrlBusParams.base,
+        ctrlBusParams.size,
+        ctrlBusParams.beatBytes,
+        ctrlBusParams.maxXferBytes,
+      ),
     ),
   )
-  val deviceMemXbar = LazyModule(new TLXbar)
-  deviceMemXbar.node := rrm.outputXbar.node
-  deviceMemXbar.node := host2DeviceMem
-  deviceMem          := deviceMemXbar.node
-  rrm.inputXbar.node := host2Accel
+
+  island.crossTLIn(rrm.inputXbar.node) := host2Accel
+  deviceMemXbar.node                   := island.crossTLOut(rrm.outputXbar.node)
 
   lazy val module = new DummyRRMImp(this)
 }
 
-class DummyRRMImp(outer: DummyRRM) extends AcceleratorShellImp(outer) {}
+class DummyRRMImp(outer: DummyRRM) extends AcceleratorShellImp(outer) {
+  val io = IO(new Bundle {
+    val accelDomain = Input(new ClockBundle)
+  })
+  outer.island.module.clock := io.accelDomain.clock
+  outer.island.module.reset := io.accelDomain.reset
+}

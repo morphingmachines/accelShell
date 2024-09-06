@@ -5,8 +5,6 @@ import org.chipsalliance.cde.config._
 
 class SimDeviceMem(implicit p: Parameters) extends AcceleratorShell with HasSimTLDeviceMem with HasHost2DeviceMemAXI4 {
 
-  deviceMem := host2DeviceMem
-
   lazy val module = new SimDeviceMemImp(this)
 }
 
@@ -16,8 +14,6 @@ class SimAXI4DeviceMem(implicit p: Parameters)
   extends AcceleratorShell
   with HasSimAXIDeviceMem
   with HasHost2DeviceMemAXI4 {
-
-  deviceMem := host2DeviceMem
 
   lazy val module = new SimAXI4DeviceMemImp(this)
 }

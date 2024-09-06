@@ -66,9 +66,9 @@ class DefaultAccelConfig
 
 abstract class AcceleratorShell(implicit p: Parameters) extends LazyModule {
 
-  val host2Accel     = TLEphemeralNode()(ValName("Host2Accel"))
-  val host2DeviceMem = TLEphemeralNode()(ValName("Host2DeviceMem"))
-  val deviceMem      = TLEphemeralNode()(ValName("DRAMAXI4"))
+  val host2Accel = TLEphemeralNode()(ValName("Host2Accel"))
+
+  val deviceMemXbar = LazyModule(new TLXbar)
 
   override val module: AcceleratorShellImp[AcceleratorShell]
 }
@@ -106,8 +106,8 @@ trait HasHost2DeviceMemAXI4 { this: AcceleratorShell =>
 
   val extMasterMemXbar = LazyModule(new TLXbar)
   extMasterMemXbar.node        := TLFIFOFixer(TLFIFOFixer.allFIFO) := AXI4ToTL() := AXI4Buffer() := extMasterMemNode
-  extMasterMemErrorDevice.node := TLBuffer() := extMasterMemXbar.node
-  host2DeviceMem               := TLBuffer() := extMasterMemXbar.node
+  extMasterMemErrorDevice.node := TLBuffer()                       := extMasterMemXbar.node
+  deviceMemXbar.node           := TLBuffer()                       := extMasterMemXbar.node
 }
 
 trait HasHost2AccelAXI4 { this: AcceleratorShell =>
@@ -141,8 +141,8 @@ trait HasHost2AccelAXI4 { this: AcceleratorShell =>
 
   val ctrlInputXbar = LazyModule(new TLXbar)
   ctrlInputXbar.node            := TLFIFOFixer(TLFIFOFixer.allFIFO) := AXI4ToTL() := AXI4Buffer() := extMasterCtrlNode
-  extMasterCtrlErrorDevice.node := TLBuffer() := ctrlInputXbar.node
-  host2Accel                    := TLBuffer() := ctrlInputXbar.node
+  extMasterCtrlErrorDevice.node := TLBuffer()                       := ctrlInputXbar.node
+  host2Accel                    := TLBuffer()                       := ctrlInputXbar.node
 }
 
 trait HasAXI4ExtOut { this: AcceleratorShell =>
@@ -150,7 +150,9 @@ trait HasAXI4ExtOut { this: AcceleratorShell =>
   require(isPow2(memBusParams.size))
   require(isPow2(p(NumMemoryChannels)))
 
+  /** Memory size equally distributed across memory channels */
   val memPortSize = memBusParams.size / p(NumMemoryChannels)
+
   val axiMemPorts = Seq.tabulate(p(NumMemoryChannels)) { i =>
     AXI4SlavePortParameters(
       Seq(
@@ -170,7 +172,7 @@ trait HasAXI4ExtOut { this: AcceleratorShell =>
   val extSlaveMemNode = AXI4SlaveNode(axiMemPorts)
 
   val mem = InModuleBody(extSlaveMemNode.makeIOs())
-  extSlaveMemNode :*= AXI4Buffer() :*= AXI4Xbar() := AXI4UserYanker() := TLToAXI4() := deviceMem
+  extSlaveMemNode :*= AXI4Buffer() :*= AXI4Xbar() := AXI4UserYanker() := TLToAXI4() := deviceMemXbar.node
 }
 
 trait HasSimTLDeviceMem { this: AcceleratorShell =>
@@ -179,8 +181,9 @@ trait HasSimTLDeviceMem { this: AcceleratorShell =>
     LazyModule(new TLRAM(address = aSet, beatBytes = memBusParams.beatBytes))
   }
   val xbar = TLXbar()
-  srams.foreach(s => s.node := TLFragmenter(memBusParams.beatBytes, memBusParams.maxXferBytes) := xbar)
-  xbar := deviceMem
+
+  srams.foreach(s => s.node := xbar)
+  xbar := TLFragmenter(memBusParams.beatBytes, memBusParams.maxXferBytes) := deviceMemXbar.node
 }
 
 trait HasSimAXIDeviceMem { this: AcceleratorShell =>
@@ -189,10 +192,11 @@ trait HasSimAXIDeviceMem { this: AcceleratorShell =>
     LazyModule(new AXI4RAM(address = aSet, beatBytes = memBusParams.beatBytes))
   }
   val xbar = AXI4Xbar()
+
   srams.foreach(s => s.node := xbar)
   xbar := AXI4UserYanker() := TLToAXI4() := TLFragmenter(
     minSize = memBusParams.beatBytes,
     maxSize = memBusParams.maxXferBytes,
     holdFirstDeny = true,
-  ) := deviceMem
+  ) := deviceMemXbar.node
 }

@@ -50,7 +50,7 @@ class DMATop(
     ),
   )
 
-  val extMemAddrWidth = log2Ceil(rdAddr.end+1)
+  val extMemAddrWidth = log2Ceil(rdAddr.end + 1)
 
   val dmaWrPortNode = TLManagerNode(
     Seq(
@@ -71,7 +71,7 @@ class DMATop(
     ),
   )
 
-  val internalMemAddrWidth = log2Ceil(wrAddr.end+1)
+  val internalMemAddrWidth = log2Ceil(wrAddr.end + 1)
 
   val configBaseAddr = BigInt(0x1000)
   val inFlightReq    = 4
@@ -92,7 +92,14 @@ class DMATopImp(outer: DMATop) extends LazyModuleImp(outer) {
   outer.dmaCtrl.module.io <> outer.dmaConfig.module.io
 }
 
-class DMAConfig(val base: BigInt, val beatBytes: Int, val srcAddrWidth: Int, val dstAddrWidth: Int)(implicit p: Parameters) extends LazyModule {
+class DMAConfig(
+  val base:         BigInt,
+  val beatBytes:    Int,
+  val srcAddrWidth: Int,
+  val dstAddrWidth: Int,
+)(
+  implicit p: Parameters,
+) extends LazyModule {
 
   val device = new SimpleDevice("Simple DMA", Seq("DMA"))
 
@@ -123,7 +130,7 @@ class DMAConfigImp(outer: DMAConfig) extends LazyModuleImp(outer) {
   val baseSrcAddrHigh = Reg(UInt(32.W))
   val baseDstAddrLow  = Reg(UInt(32.W))
   val baseDstAddrHigh = Reg(UInt(32.W))
-  val length      = Reg(UInt(16.W))
+  val length          = Reg(UInt(16.W))
 
   val free = RegInit(true.B)
 
@@ -147,11 +154,11 @@ class DMAConfigImp(outer: DMAConfig) extends LazyModuleImp(outer) {
   def doneDMA(@annotation.unused valid: Bool): (Bool, UInt) =
     (true.B, free)
 
-  def baseSrcAddrLowRdFunc(@annotation.unused ready: Bool): (Bool, UInt) = (true.B, baseSrcAddrLow)
+  def baseSrcAddrLowRdFunc(@annotation.unused ready:  Bool): (Bool, UInt) = (true.B, baseSrcAddrLow)
   def baseSrcAddrHighRdFunc(@annotation.unused ready: Bool): (Bool, UInt) = (true.B, baseSrcAddrHigh)
-  def baseDstAddrLowRdFunc(@annotation.unused ready: Bool): (Bool, UInt) = (true.B, baseDstAddrLow)
+  def baseDstAddrLowRdFunc(@annotation.unused ready:  Bool): (Bool, UInt) = (true.B, baseDstAddrLow)
   def baseDstAddrHighRdFunc(@annotation.unused ready: Bool): (Bool, UInt) = (true.B, baseDstAddrHigh)
-  def byteLenRdFunc(@annotation.unused ready:     Bool): (Bool, UInt) = (true.B, length)
+  def byteLenRdFunc(@annotation.unused ready:         Bool): (Bool, UInt) = (true.B, length)
 
   def baseSrcAddrLowWrFunc(valid: Bool, bits: UInt): Bool = {
     when(valid) {
@@ -197,7 +204,7 @@ class DMAConfigImp(outer: DMAConfig) extends LazyModuleImp(outer) {
     0x00 -> Seq(RegField(32, baseSrcAddrLowRdFunc(_), baseSrcAddrLowWrFunc(_, _))),
     0x04 -> Seq(RegField(32, baseSrcAddrHighRdFunc(_), baseSrcAddrHighWrFunc(_, _))),
     0x08 -> Seq(RegField(32, baseDstAddrLowRdFunc(_), baseDstAddrLowWrFunc(_, _))),
-    0x0C -> Seq(RegField(32, baseDstAddrHighRdFunc(_), baseDstAddrHighWrFunc(_, _))),
+    0x0c -> Seq(RegField(32, baseDstAddrHighRdFunc(_), baseDstAddrHighWrFunc(_, _))),
     0x10 -> Seq(RegField(16, byteLenRdFunc(_), byteLenWrFunc(_, _))),
     0x18 -> Seq(RegField.w(1, startDMA(_, _))),
     0x20 -> Seq(RegField.r(1, doneDMA(_))),
@@ -205,7 +212,7 @@ class DMAConfigImp(outer: DMAConfig) extends LazyModuleImp(outer) {
 }
 
 class DMACtrl(
-  val inFlight:  Int,
+  val inFlight:     Int,
   val srcAddrWidth: Int,
   val dstAddrWidth: Int,
 )(
