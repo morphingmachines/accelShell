@@ -103,7 +103,7 @@ class DMAConfig(
   val device = new SimpleDevice("Simple DMA", Seq("DMA"))
 
   val regNode = TLRegisterNode(
-    address = Seq(AddressSet(base, 0x0ff)),
+    address = Seq(AddressSet(base, 0xfff)),
     device = device,
     beatBytes = 4,
     concurrency = 1,

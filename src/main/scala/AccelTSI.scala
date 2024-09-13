@@ -30,7 +30,7 @@ class AccelTSI(
   val device = new SimpleDevice("AccelTSI", Seq("Accelerator TSI"))
 
   val regNode = TLRegisterNode(
-    address = Seq(AddressSet(base, 0x0ff)),
+    address = Seq(AddressSet(base, 0xfff)),
     device = device,
     beatBytes = 4,
     concurrency = 1,

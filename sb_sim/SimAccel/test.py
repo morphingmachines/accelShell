@@ -45,11 +45,11 @@ def main():
     hostCtrl = dut.intfs["hostCtrl"]
 
     configBaseAddr = 0x20000
-    tsiWrAddr = 0x20100
-    tsiRdAddr = 0x20104
+    tsiWrAddr = 0x21000
+    tsiRdAddr = 0x21004
 
     srcbaseAddr = 0x10000
-    dstbaseAddr = 0x21000
+    dstbaseAddr = 0x22000
     length = 32
 
     model = np.zeros((length,), dtype=np.uint8)

@@ -25,17 +25,17 @@ class DummyRRMConfig
           size = BigInt(0x1_0000L),
           beatBytes = 64,
           idBits = 4,
-          maxXferBytes = 64,
+          maxXferBytes = 4096,
         ),
       )
     case HostCtrlBus =>
       Some(
         new MasterPortParams(
           base = BigInt(0x1_0000_0000L),
-          size = BigInt(0x2000),
+          size = BigInt(0x4000),
           beatBytes = 64,
           idBits = 4,
-          maxXferBytes = 64,
+          maxXferBytes = 4096,
         ),
       )
   })
