@@ -107,6 +107,12 @@ object myhardfloat extends ScalaModule with SbtModule with PublishModule {
   )
 }
 
+object testchipip extends ^.playground.build.CommonModule with SbtModule {
+  override def millSourcePath = os.pwd / os.up / "playground" / "dependencies" / "testchipip"
+  override def moduleDeps     = super.moduleDeps ++ Seq(myrocketchip, blocks)
+}
+
+
 trait ScalacOptions extends ScalaModule {
   override def scalacOptions = T {
     super.scalacOptions() ++ Seq(
@@ -130,7 +136,7 @@ object accelShell
   with ScalacOptions { m =>
   override def millSourcePath = os.pwd
   // Update moduleDeps as required
-  override def moduleDeps = super.moduleDeps ++ Seq(myrocketchip)
+  override def moduleDeps = super.moduleDeps ++ Seq(myrocketchip, testchipip)
 
   object test extends SbtModuleTests with ScalaTest with ScalafmtModule with ScalafixModule {
     override def ivyDeps = super.ivyDeps() ++ Agg(

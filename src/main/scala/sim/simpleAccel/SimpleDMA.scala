@@ -75,7 +75,7 @@ class DMATop(
 
   val configBaseAddr = BigInt(0x1000)
   val inFlightReq    = 4
-  val dmaConfig      = LazyModule(new DMAConfig(configBaseAddr, wrBeatBytes, extMemAddrWidth, internalMemAddrWidth))
+  val dmaConfig      = LazyModule(new DMAConfig(configBaseAddr, extMemAddrWidth, internalMemAddrWidth))
   val dmaCtrl        = LazyModule(new DMACtrl(inFlightReq, extMemAddrWidth, internalMemAddrWidth))
 
   dmaConfig.regNode := clientNode
@@ -94,7 +94,6 @@ class DMATopImp(outer: DMATop) extends LazyModuleImp(outer) {
 
 class DMAConfig(
   val base:         BigInt,
-  val beatBytes:    Int,
   val srcAddrWidth: Int,
   val dstAddrWidth: Int,
 )(
@@ -104,9 +103,9 @@ class DMAConfig(
   val device = new SimpleDevice("Simple DMA", Seq("DMA"))
 
   val regNode = TLRegisterNode(
-    address = Seq(AddressSet(base, 0xfff)),
+    address = Seq(AddressSet(base, 0x0ff)),
     device = device,
-    beatBytes = math.min(beatBytes, 8),
+    beatBytes = 4,
     concurrency = 1,
   )
 

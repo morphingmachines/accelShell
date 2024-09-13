@@ -16,14 +16,20 @@ import org.chipsalliance.cde.config._
   * DummyRRM functionality
   *   - A simple DMA engine that read data from device memory and writes to some internal SRAM.
   *   - The slave address space is split into two regions,
-  *     - Region-0 (baseAddr, baseAddr+0xFFF)
+  *     - Region-0 (baseAddr, baseAddr+0x0FF)
   *       - Configuration address space where DMA transfer info is programmed
   *         - 0x00 - Input, DMA source address should be within the device memory address range
   *         - 0x08 - Input, DMA destination address should be within the DummyRRM internal SRAM address range
   *         - 0x10 - Input, DMA transfer size
   *         - 0x18 - Input, Signal to start
   *         - 0x20 - Output, Signal that indicates end of DMA or ready to accept new DMA request.
-  *     - Region-1 (baseAddr+0x1000, baseAddr+0x1FFF)
+  *     - Region-1 (baseAddr+0x100, baseAddr+0x1FF)
+  *       - 0x00 - TSI Input port
+  *       - 0x04 - TSI Output port
+  *       - TSI Cmd: {Read = 0, Write = 1}
+  *       - TSI transaction = {cmd (4 bytes), addr (8 bytes), len (8 bytes), data (array of 32-bit words)}
+  *       - len is length(data)- 1,
+  *     - Region-2 (baseAddr+0x1000, baseAddr+0x1FFF)
   *       - Internal SRAM, the destination address for the DMA transfer.
   *   - To validate the DummyRRM functionality, the host should be able to load random values to the device memory and
   *     program the DMA, and validate it by reading it from the internal SRAM.
@@ -37,28 +43,33 @@ class DummyBaseRRM(base: BigInt, size: BigInt, beatBytes: Int, maxXferBytes: Int
 
   val bramXbar = LazyModule(new TLXbar)
 
-  val inputXbar  = LazyModule(new TLXbar)
-  val outputXbar = LazyModule(new TLXbar)
+  val inputXbar    = LazyModule(new TLXbar)
+  val internalXbar = LazyModule(new TLXbar)
+  val outputXbar   = LazyModule(new TLXbar)
+  val tsiXbar      = LazyModule(new TLXbar)
 
   val extMemIfcParams = p(HostMemBus).get
   val extMemAddrWidth = log2Ceil(extMemIfcParams.base + extMemIfcParams.size)
 
   val internalMemAddrWidth = log2Ceil(base + size)
 
-  val dmaConfig = LazyModule(new DMAConfig(base, beatBytes, extMemAddrWidth, internalMemAddrWidth))
+  val tsiBase   = base + 0x100
+  val accelTSI  = LazyModule(new AccelTSI(tsiBase))
+  val dmaConfig = LazyModule(new DMAConfig(base, extMemAddrWidth, internalMemAddrWidth))
   val dmaCtrl   = LazyModule(new DMACtrl(4, extMemAddrWidth, internalMemAddrWidth))
 
   outputXbar.node := dmaCtrl.rdClient
 
   bramXbar.node := dmaCtrl.wrClient
-  bramXbar.node := inputXbar.node
-  if (beatBytes > 8) {
-    dmaConfig.regNode := TLFragmenter(8, beatBytes) := TLWidthWidget(beatBytes) := inputXbar.node
-  } else {
-    dmaConfig.regNode := inputXbar.node
-  }
+  bramXbar.node := internalXbar.node
 
-  bram.node := TLFragmenter(beatBytes, maxXferBytes) := bramXbar.node
+  internalXbar.node := inputXbar.node
+  accelTSI.regNode  := TLFragmenter(4, maxXferBytes) := TLWidthWidget(beatBytes) := inputXbar.node
+  internalXbar.node := tsiXbar.node                  := accelTSI.tsi2tl.node
+  outputXbar.node   := tsiXbar.node
+
+  dmaConfig.regNode := TLFragmenter(4, maxXferBytes)         := TLWidthWidget(beatBytes) := internalXbar.node
+  bram.node         := TLFragmenter(beatBytes, maxXferBytes) := bramXbar.node
 
   lazy val module = new DummyBaseRRMImp(this)
 }
