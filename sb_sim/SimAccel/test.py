@@ -44,18 +44,20 @@ def main():
     hostMem = dut.intfs["hostMem"]
     hostCtrl = dut.intfs["hostCtrl"]
 
-    configBaseAddr = 0x20000
-    tsiWrAddr = 0x21000
-    tsiRdAddr = 0x21004
+    hostMemBusBaseAddr = 0x10000
+    hostCtrlBusBaseAddr = 0x20000
 
-    srcbaseAddr = 0x10000
-    dstbaseAddr = 0x22000
+    configBaseAddr = hostCtrlBusBaseAddr
+    tsiWrAddr = hostCtrlBusBaseAddr + 0x1000
+    tsiRdAddr = hostCtrlBusBaseAddr + 0x1004
+
+    srcbaseAddr = hostMemBusBaseAddr
+    dstbaseAddr = hostCtrlBusBaseAddr + 0x2000
     length = 32
 
     model = np.zeros((length,), dtype=np.uint8)
 
     success = True
-    baseAddr = 0x1_0000
 
     for i in range(length >> 2):
         addr = srcbaseAddr + (i * 4)
