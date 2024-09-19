@@ -9,6 +9,7 @@ import org.chipsalliance.cde.config._
 
 class SimAccel(implicit p: Parameters)
   extends AcceleratorShell
+  with HostMemIfcAXI4
   with HasSimAXIDeviceMem
   with HasHost2AccelAXI4
   with HasHost2DeviceMemAXI4 {

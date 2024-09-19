@@ -7,10 +7,6 @@ import freechips.rocketchip.subsystem.MasterPortParams
 import freechips.rocketchip.tilelink._
 import org.chipsalliance.cde.config._
 
-case object Host2AccelNodeKey extends Field[Option[TLEphemeralNode]](None)
-case object Host2MemNodeKey   extends Field[Option[TLEphemeralNode]](None)
-case object ExtMemNodeKey     extends Field[Option[TLEphemeralNode]](None)
-
 case object HostMemBus        extends Field[Option[MasterPortParams]](None)
 case object HostCtrlBus       extends Field[Option[MasterPortParams]](None)
 case object NumMemoryChannels extends Field[Int](1)
@@ -65,7 +61,7 @@ class DefaultAccelConfig
   })
 
 abstract class AcceleratorShell(implicit p: Parameters) extends LazyModule {
-
+  val hostMemIfc = TLEphemeralNode()(ValName("HostMemIfc"))
   val host2Accel = TLEphemeralNode()(ValName("Host2Accel"))
 
   val deviceMemXbar = LazyModule(new TLXbar)
@@ -75,7 +71,7 @@ abstract class AcceleratorShell(implicit p: Parameters) extends LazyModule {
 
 abstract class AcceleratorShellImp[+L <: AcceleratorShell](outer: L) extends LazyModuleImp(outer) {}
 
-trait HasHost2DeviceMemAXI4 { this: AcceleratorShell =>
+trait HostMemIfcAXI4 { this: AcceleratorShell =>
   private val memBusParams = p(HostMemBus).get
   val extMasterMemNode = AXI4MasterNode(
     Seq(
@@ -107,7 +103,10 @@ trait HasHost2DeviceMemAXI4 { this: AcceleratorShell =>
   val extMasterMemXbar = LazyModule(new TLXbar)
   extMasterMemXbar.node        := TLFIFOFixer(TLFIFOFixer.allFIFO) := AXI4ToTL() := AXI4Buffer() := extMasterMemNode
   extMasterMemErrorDevice.node := TLBuffer()                       := extMasterMemXbar.node
-  deviceMemXbar.node           := TLBuffer()                       := extMasterMemXbar.node
+  hostMemIfc                   := TLBuffer()                       := extMasterMemXbar.node
+}
+trait HasHost2DeviceMemAXI4 { this: HostMemIfcAXI4 with AcceleratorShell =>
+  deviceMemXbar.node := hostMemIfc
 }
 
 trait HasHost2AccelAXI4 { this: AcceleratorShell =>

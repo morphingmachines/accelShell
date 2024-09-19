@@ -81,6 +81,7 @@ class DummyBaseRRMImp(outer: DummyBaseRRM) extends LazyModuleImp(outer) {
 
 class DummyRRM(implicit p: Parameters)
   extends AcceleratorShell
+  with HostMemIfcAXI4
   with HasAXI4ExtOut
   with HasHost2DeviceMemAXI4
   with HasHost2AccelAXI4 {
