@@ -13,12 +13,12 @@ case object NumMemoryChannels extends Field[Int](1)
 
 class DummyRRMConfig
   extends Config((_, _, _) => {
-    case NumMemoryChannels => 2
+    case NumMemoryChannels => 1
     case HostMemBus =>
       Some(
         new MasterPortParams(
           base = BigInt(0x0000_0000),
-          size = BigInt(0x1_0000L),
+          size = BigInt(0x1_0000_0000L),
           beatBytes = 64,
           idBits = 4,
           maxXferBytes = 4096,
@@ -101,9 +101,11 @@ trait HostMemIfcAXI4 { this: AcceleratorShell =>
   )
 
   val extMasterMemXbar = LazyModule(new TLXbar)
-  extMasterMemXbar.node        := TLFIFOFixer(TLFIFOFixer.allFIFO) := AXI4ToTL() := AXI4Buffer() := extMasterMemNode
-  extMasterMemErrorDevice.node := TLBuffer()                       := extMasterMemXbar.node
-  hostMemIfc                   := TLBuffer()                       := extMasterMemXbar.node
+  extMasterMemXbar.node := TLBuffer() := TLFIFOFixer(
+    TLFIFOFixer.allFIFO,
+  )                            := AXI4ToTL() := AXI4Buffer() := extMasterMemNode
+  extMasterMemErrorDevice.node := TLBuffer() := extMasterMemXbar.node
+  hostMemIfc                   := TLBuffer() := extMasterMemXbar.node
 }
 trait HasHost2DeviceMemAXI4 { this: HostMemIfcAXI4 with AcceleratorShell =>
   deviceMemXbar.node := hostMemIfc
@@ -171,7 +173,7 @@ trait HasAXI4ExtOut { this: AcceleratorShell =>
   val extSlaveMemNode = AXI4SlaveNode(axiMemPorts)
 
   val mem = InModuleBody(extSlaveMemNode.makeIOs())
-  extSlaveMemNode :*= AXI4Buffer() :*= AXI4Xbar() := AXI4UserYanker() := TLToAXI4() := deviceMemXbar.node
+  extSlaveMemNode :*= AXI4Buffer() :*= AXI4Xbar() := AXI4UserYanker() := TLToAXI4() := TLBuffer() := deviceMemXbar.node
 }
 
 trait HasSimTLDeviceMem { this: AcceleratorShell =>
