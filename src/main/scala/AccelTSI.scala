@@ -23,10 +23,11 @@ import testchipip.tsi.TSIToTileLink
 
 class AccelTSI(
   val base: BigInt,
+  val size: BigInt = 0x1000
 )(
   implicit p: Parameters,
 ) extends LazyModule {
-
+  require(size >= 0x1000)
   val device = new SimpleDevice("AccelTSI", Seq("Accelerator TSI"))
 
   val regNode = TLRegisterNode(
