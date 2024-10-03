@@ -143,7 +143,7 @@ trait HasHost2AccelAXI4 { this: AcceleratorShell =>
   val ctrlInputXbar = LazyModule(new TLXbar)
   ctrlInputXbar.node := TLBuffer() := TLFIFOFixer(
     TLFIFOFixer.allFIFO,
-  )                             := AXI4ToTL() := AXI4Buffer() := extMasterCtrlNode
+  )                             := TLBuffer() := AXI4ToTL() := AXI4Buffer() := extMasterCtrlNode
   extMasterCtrlErrorDevice.node := TLBuffer() := ctrlInputXbar.node
   host2Accel                    := TLBuffer() := ctrlInputXbar.node
 }
