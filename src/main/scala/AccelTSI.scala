@@ -23,7 +23,7 @@ import testchipip.tsi.TSIToTileLink
 
 class AccelTSI(
   val base: BigInt,
-  val size: BigInt = 0x1000
+  val size: BigInt = 0x1000,
 )(
   implicit p: Parameters,
 ) extends LazyModule {

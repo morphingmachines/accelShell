@@ -6,91 +6,12 @@ import freechips.rocketchip.regmapper.RegField
 import freechips.rocketchip.tilelink.{
   IDMapGenerator,
   TLClientNode,
-  TLManagerNode,
   TLMasterParameters,
   TLMasterPortParameters,
   TLRegisterNode,
-  TLSlaveParameters,
-  TLSlavePortParameters,
 }
 import freechips.rocketchip.util.TwoWayCounter
 import org.chipsalliance.cde.config._
-
-class DMATop(
-  wrAddr:         AddressRange,
-  wrBeatBytes:    Int,
-  wrMaxXferBytes: Int,
-  rdAddr:         AddressRange,
-  rdBeatBytes:    Int,
-  rdMaxXferBytes: Int,
-)(
-  implicit p: Parameters,
-) extends LazyModule {
-  val clientNode = TLClientNode(
-    Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "MyDevice", sourceId = IdRange(0, 1))))),
-  )
-
-  // Read from External Memory interface
-  val dmaRdPortNode = TLManagerNode(
-    Seq(
-      TLSlavePortParameters.v1(
-        Seq(
-          TLSlaveParameters.v1(
-            address = AddressSet.misaligned(rdAddr.base, rdAddr.size),
-            regionType = RegionType.UNCACHED,
-            supportsPutFull = TransferSizes.none,
-            supportsPutPartial = TransferSizes.none,
-            supportsGet = TransferSizes(rdBeatBytes, rdMaxXferBytes),
-          ),
-        ),
-        beatBytes = rdBeatBytes,
-        minLatency = 1,
-        endSinkId = 0,
-      ),
-    ),
-  )
-
-  val extMemAddrWidth = log2Ceil(rdAddr.end + 1)
-
-  val dmaWrPortNode = TLManagerNode(
-    Seq(
-      TLSlavePortParameters.v1(
-        Seq(
-          TLSlaveParameters.v1(
-            address = AddressSet.misaligned(wrAddr.base, wrAddr.size),
-            regionType = RegionType.UNCACHED,
-            supportsPutFull = TransferSizes(wrBeatBytes, wrMaxXferBytes),
-            supportsPutPartial = TransferSizes.none,
-            supportsGet = TransferSizes.none,
-          ),
-        ),
-        beatBytes = wrBeatBytes,
-        minLatency = 1,
-        endSinkId = 0,
-      ),
-    ),
-  )
-
-  val internalMemAddrWidth = log2Ceil(wrAddr.end + 1)
-
-  val configBaseAddr = BigInt(0x1000)
-  val inFlightReq    = 4
-  val dmaConfig      = LazyModule(new DMAConfig(configBaseAddr, extMemAddrWidth, internalMemAddrWidth))
-  val dmaCtrl        = LazyModule(new DMACtrl(inFlightReq, extMemAddrWidth, internalMemAddrWidth))
-
-  dmaConfig.regNode := clientNode
-  dmaRdPortNode     := dmaCtrl.rdClient
-  dmaWrPortNode     := dmaCtrl.wrClient
-
-  val config      = InModuleBody(clientNode.makeIOs())
-  val rd          = InModuleBody(dmaRdPortNode.makeIOs())
-  val wr          = InModuleBody(dmaWrPortNode.makeIOs())
-  lazy val module = new DMATopImp(this)
-}
-
-class DMATopImp(outer: DMATop) extends LazyModuleImp(outer) {
-  outer.dmaCtrl.module.io <> outer.dmaConfig.module.io
-}
 
 class DMAConfig(
   val base:         BigInt,
@@ -271,6 +192,7 @@ class DMACtrlImp(outer: DMACtrl) extends LazyModuleImp(outer) {
   /* The read response data from source are forwarded to the destination as write request data with out storing.
    * So we need the transfer size of the destination greater-than or equal to the source interconnect.
    */
+  require(wrEdge.manager.beatBytes == rdEdge.manager.beatBytes)
   require(wrEdge.manager.maxTransfer >= rdEdge.manager.maxTransfer)
 
   /* Note that, DMA performs
