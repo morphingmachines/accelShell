@@ -23,14 +23,12 @@ class SimAccel(implicit p: Parameters)
       new simpleAccel.DummyBaseRRM(
         ctrlBusParams.base,
         ctrlBusParams.size,
-        ctrlBusParams.beatBytes,
-        ctrlBusParams.maxXferBytes,
       ),
     ),
   )
 
-  island.crossTLIn(rrm.inputXbar.node) := host2Accel
-  deviceMemXbar.node                   := island.crossTLOut(rrm.outputXbar.node)
+  island.crossTLIn(rrm.host2AccelMasterBus) := host2Accel
+  deviceMemXbar.node                        := island.crossTLOut(rrm.deviecMemSlaveBus)
 
   lazy val module = new SimAccelImp(this)
 }
