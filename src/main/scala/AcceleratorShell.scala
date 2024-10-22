@@ -162,6 +162,7 @@ trait HasAXI4ExtOut { this: AcceleratorShell =>
         AXI4SlaveParameters(
           address = AddressSet.misaligned(memBusParams.base + memPortSize * i, memPortSize),
           regionType = RegionType.UNCACHED,
+          executable = true,
           supportsWrite = TransferSizes(1, memBusParams.maxXferBytes),
           supportsRead = TransferSizes(1, memBusParams.maxXferBytes),
           interleavedId = Some(0),
