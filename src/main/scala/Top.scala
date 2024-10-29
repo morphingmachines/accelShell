@@ -143,7 +143,7 @@ object accelShellMain extends App with LazyToplevel {
     case "SimAccel"           => LazyModule(new accelShell.sim.SimAccel()(new Config(new DefaultAccelConfig)))
     case "SimMem"             => LazyModule(new accelShell.sim.SimDeviceMem()(new Config(new DefaultAccelConfig)))
     case "SimAXI4Mem"         => LazyModule(new accelShell.sim.SimAXI4DeviceMem()(new Config(new DefaultAccelConfig)))
-    case "AccelDeviceWithTSI" => LazyModule(new accelShell.sim.AccelDeviceWithTSI()(new Config(new DummyRRMConfig)))
+    case "AccelDeviceWithTSI" => LazyModule(new accelShell.sim.simpleAccel.AccelDeviceWithTSI()(new Config(new DummyRRMConfig)))
     case _                    => throw new Exception("Unknown Module Name!")
   }
 
