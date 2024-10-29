@@ -1,7 +1,9 @@
 package accelShell.sim
 
 import accelShell._
+import chisel3._
 import freechips.rocketchip.diplomacy.{AsynchronousCrossing, LazyModule}
+import freechips.rocketchip.prci.ClockBundle
 import freechips.rocketchip.subsystem.CrossingWrapper
 import org.chipsalliance.cde.config._
 
@@ -25,4 +27,10 @@ class AccelDeviceWithTSI(implicit p: Parameters)
 
   lazy val module = new AccelDeviceWithTSIImp(this)
 }
-class AccelDeviceWithTSIImp(outer: AccelDeviceWithTSI) extends AcceleratorShellImp(outer) {}
+class AccelDeviceWithTSIImp(outer: AccelDeviceWithTSI) extends AcceleratorShellImp(outer) {
+  val io = IO(new Bundle {
+    val accelDomain = Input(new ClockBundle)
+  })
+  outer.island.module.clock := io.accelDomain.clock
+  outer.island.module.reset := io.accelDomain.reset
+}
