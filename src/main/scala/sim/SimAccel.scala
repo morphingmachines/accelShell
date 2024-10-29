@@ -1,6 +1,7 @@
 package accelShell.sim
 
 import accelShell._
+import accelShell.sim.simpleAccel.DummyRRMInternalAddrMap
 import chisel3._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.prci.ClockBundle
@@ -23,14 +24,13 @@ class SimAccel(implicit p: Parameters)
       new simpleAccel.DummyBaseRRM(
         ctrlBusParams.base,
         ctrlBusParams.size,
-        ctrlBusParams.beatBytes,
-        ctrlBusParams.maxXferBytes,
+        DummyRRMInternalAddrMap(dmaBufferOffsetAddr = 0x2000, dmaConfigOffsetAddr = 0x1000, accelTSIOffsetAddr = 0),
       ),
     ),
   )
 
-  island.crossTLIn(rrm.inputXbar.node) := host2Accel
-  deviceMemXbar.node                   := island.crossTLOut(rrm.outputXbar.node)
+  island.crossTLIn(rrm.host2AccelMasterBus) := host2Accel
+  deviceMemXbar.node                        := island.crossTLOut(rrm.deviecMemSlaveBus)
 
   lazy val module = new SimAccelImp(this)
 }

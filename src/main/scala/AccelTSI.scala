@@ -22,11 +22,14 @@ import testchipip.tsi.TSIToTileLink
  */
 
 class AccelTSI(
-  val base: BigInt,
+  val base:           BigInt,
+  val size:           BigInt = 0x1000,
+  val fieldAlignment: Int = 4,
 )(
   implicit p: Parameters,
 ) extends LazyModule {
-
+  require(size >= 0x1000)
+  require(fieldAlignment >= 4 && fieldAlignment <= size / 4)
   val device = new SimpleDevice("AccelTSI", Seq("Accelerator TSI"))
 
   val regNode = TLRegisterNode(
@@ -42,9 +45,10 @@ class AccelTSI(
 }
 
 class AccelTSIImp(outer: AccelTSI) extends LazyModuleImp(outer) {
+  val base = 0x0 // 4KB aligned
   outer.regNode.regmap(
-    0x00 -> Seq(RegField.w(32, outer.tsi2tl.module.io.tsi.in)),
-    0x04 -> Seq(RegField.r(32, outer.tsi2tl.module.io.tsi.out)),
-    0x08 -> Seq(RegField.r(32, outer.tsi2tl.module.io.state)),
+    base                              -> Seq(RegField.w(32, outer.tsi2tl.module.io.tsi.in)),
+    (base + outer.fieldAlignment)     -> Seq(RegField.r(32, outer.tsi2tl.module.io.tsi.out)),
+    (base + 2 * outer.fieldAlignment) -> Seq(RegField.r(32, outer.tsi2tl.module.io.state)),
   )
 }

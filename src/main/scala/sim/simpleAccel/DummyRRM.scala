@@ -2,12 +2,21 @@ package accelShell.sim.simpleAccel
 
 import accelShell._
 import chisel3._
-import chisel3.util.log2Ceil
+import chisel3.util.{isPow2, log2Ceil}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.prci.ClockBundle
 import freechips.rocketchip.subsystem.CrossingWrapper
 import freechips.rocketchip.tilelink.{TLFragmenter, TLRAM, TLWidthWidget, TLXbar}
 import org.chipsalliance.cde.config._
+
+case class DummyRRMInternalAddrMap(
+  dmaConfigOffsetAddr: BigInt = 0x1000,
+  dmaConfigSize:       BigInt = 0x1000,
+  accelTSIOffsetAddr:  BigInt = 0,
+  accelTSISize:        BigInt = 0x1000,
+  dmaBufferOffsetAddr: BigInt = 0x2000,
+  dmaBufferSize:       BigInt = 0x1000,
+)
 
 /** DummyBaseRRM is true to the RRM interfaces.
   * -> Slave interface : Used by the Host to configure and control the RRM
@@ -35,41 +44,49 @@ import org.chipsalliance.cde.config._
   *     program the DMA, and validate it by reading it from the internal SRAM.
   */
 
-class DummyBaseRRM(base: BigInt, size: BigInt, beatBytes: Int, maxXferBytes: Int)(implicit p: Parameters)
+class DummyBaseRRM(base: BigInt, size: BigInt, internalAddrMap: DummyRRMInternalAddrMap)(implicit p: Parameters)
   extends LazyModule {
-  require(size >= 0x4000)
-  val bramBase = base + 0x2000
-  val bram     = LazyModule(new TLRAM(AddressSet(bramBase, 0xfff), beatBytes = beatBytes))
+  require(size >= (internalAddrMap.accelTSISize + internalAddrMap.dmaBufferSize + internalAddrMap.dmaConfigSize))
+  require(isPow2(internalAddrMap.dmaBufferSize))
 
-  val bramXbar = LazyModule(new TLXbar)
+  val deviceMemParams = p(HostMemBus).get
+  val accelIfc        = p(HostCtrlBus).get
 
-  val inputXbar    = LazyModule(new TLXbar)
-  val internalXbar = LazyModule(new TLXbar)
-  val outputXbar   = LazyModule(new TLXbar)
-  val tsiXbar      = LazyModule(new TLXbar)
+  val bramBase = base + internalAddrMap.dmaBufferOffsetAddr
+  val bram = LazyModule(
+    new TLRAM(AddressSet(bramBase, internalAddrMap.dmaBufferSize - 1), beatBytes = deviceMemParams.beatBytes),
+  )
 
-  val extMemIfcParams = p(HostMemBus).get
-  val extMemAddrWidth = log2Ceil(extMemIfcParams.base + extMemIfcParams.size)
+  val bramSlaveBus        = TLXbar()
+  val tsiMasterBus        = TLXbar()
+  val deviecMemSlaveBus   = TLXbar()
+  val host2AccelMasterBus = TLXbar()
 
-  val internalMemAddrWidth = log2Ceil(base + size)
+  val extMemAddrWidth = log2Ceil(deviceMemParams.base + deviceMemParams.size)
 
-  val tsiBase   = base + 0x1000
-  val accelTSI  = LazyModule(new AccelTSI(tsiBase))
-  val dmaConfig = LazyModule(new DMAConfig(base, extMemAddrWidth, internalMemAddrWidth))
-  val dmaCtrl   = LazyModule(new DMACtrl(4, extMemAddrWidth, internalMemAddrWidth))
+  val maxXferBytesAccelIfc = accelIfc.maxXferBytes
 
-  outputXbar.node := dmaCtrl.rdClient
+  val internalMemAddrWidth = log2Ceil(bramBase + internalAddrMap.dmaBufferSize)
 
-  bramXbar.node := dmaCtrl.wrClient
-  bramXbar.node := internalXbar.node
+  val tsiBase = base + internalAddrMap.accelTSIOffsetAddr
+  val accelTSI = LazyModule(
+    new AccelTSI(base = tsiBase, size = internalAddrMap.accelTSISize, fieldAlignment = accelIfc.beatBytes),
+  )
+  val dmaConfigBase = base + internalAddrMap.dmaConfigOffsetAddr
+  val dmaConfig     = LazyModule(new DMAConfig(dmaConfigBase, extMemAddrWidth, internalMemAddrWidth))
+  val dmaCtrl       = LazyModule(new DMACtrl(4, extMemAddrWidth, internalMemAddrWidth))
 
-  internalXbar.node := inputXbar.node
-  accelTSI.regNode  := TLFragmenter(4, maxXferBytes) := TLWidthWidget(beatBytes) := inputXbar.node
-  internalXbar.node := tsiXbar.node                  := accelTSI.tsi2tl.node
-  outputXbar.node   := tsiXbar.node
+  deviecMemSlaveBus := dmaCtrl.rdClient
 
-  dmaConfig.regNode := TLFragmenter(4, maxXferBytes)         := TLWidthWidget(beatBytes) := internalXbar.node
-  bram.node         := TLFragmenter(beatBytes, maxXferBytes) := bramXbar.node
+  bramSlaveBus := dmaCtrl.wrClient
+  bramSlaveBus := TLWidthWidget(4) := host2AccelMasterBus
+
+  accelTSI.regNode  := TLFragmenter(4, maxXferBytesAccelIfc) := host2AccelMasterBus
+  bramSlaveBus      := tsiMasterBus                          := accelTSI.tsi2tl.node
+  deviecMemSlaveBus := tsiMasterBus
+
+  dmaConfig.regNode := TLFragmenter(4, maxXferBytesAccelIfc)                         := host2AccelMasterBus
+  bram.node         := TLFragmenter(deviceMemParams.beatBytes, maxXferBytesAccelIfc) := bramSlaveBus
 
   lazy val module = new DummyBaseRRMImp(this)
 }
@@ -95,14 +112,13 @@ class DummyRRM(implicit p: Parameters)
       new DummyBaseRRM(
         ctrlBusParams.base,
         ctrlBusParams.size,
-        ctrlBusParams.beatBytes,
-        ctrlBusParams.maxXferBytes,
+        DummyRRMInternalAddrMap(dmaBufferOffsetAddr = 0x2000, dmaConfigOffsetAddr = 0x1000, accelTSIOffsetAddr = 0),
       ),
     ),
   )
 
-  island.crossTLIn(rrm.inputXbar.node) := host2Accel
-  deviceMemXbar.node                   := island.crossTLOut(rrm.outputXbar.node)
+  island.crossTLIn(rrm.host2AccelMasterBus) := host2Accel
+  deviceMemXbar.node                        := island.crossTLOut(rrm.deviecMemSlaveBus)
 
   lazy val module = new DummyRRMImp(this)
 }

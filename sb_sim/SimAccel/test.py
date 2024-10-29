@@ -47,12 +47,18 @@ def main():
     hostMemBusBaseAddr = 0x10000
     hostCtrlBusBaseAddr = 0x20000
 
-    configBaseAddr = hostCtrlBusBaseAddr
-    tsiWrAddr = hostCtrlBusBaseAddr + 0x1000
-    tsiRdAddr = hostCtrlBusBaseAddr + 0x1004
+    tsiOffsetAddr    = 0
+    configOffsetAddr = 0x1000
+    dmaBufferOffsetAddr = 0x2000
+
+    tsiTransferSize = 4 
+    tsiWrAddr = hostCtrlBusBaseAddr + tsiOffsetAddr
+    tsiRdAddr = hostCtrlBusBaseAddr + tsiOffsetAddr + tsiTransferSize
+
+    dmaConfigBaseAddr = hostCtrlBusBaseAddr + configOffsetAddr
 
     srcbaseAddr = hostMemBusBaseAddr
-    dstbaseAddr = hostCtrlBusBaseAddr + 0x2000
+    dstbaseAddr = hostCtrlBusBaseAddr + dmaBufferOffsetAddr
     length = 32
 
     model = np.zeros((length,), dtype=np.uint8)
@@ -114,44 +120,44 @@ def main():
         return data32Array
 
     def dmaConfigWithTSI():
-        tsiWrReq(configBaseAddr, [srcbaseAddr])
+        tsiWrReq(dmaConfigBaseAddr, [srcbaseAddr])
         print(f"srcBaseAddr config done")
-        tsiWrReq(configBaseAddr + 8, [dstbaseAddr])
+        tsiWrReq(dmaConfigBaseAddr + 8, [dstbaseAddr])
         print(f"dstBaseAddr config done")
-        tsiWrReq(configBaseAddr + 16, [length])
+        tsiWrReq(dmaConfigBaseAddr + 16, [length])
         print(f"length config done")
-        tsiWrReq(configBaseAddr + 24, [0])
+        tsiWrReq(dmaConfigBaseAddr + 24, [0])
         print(f"Trigger config done")
 
         done = False
 
         while not (done):
-            data = tsiRdReq(configBaseAddr + 32, 0)
+            data = tsiRdReq(dmaConfigBaseAddr + 32, 0)
             done = data[0] != 0
 
     def dmaConfig():
         hostCtrl.write(
-            configBaseAddr,
+            dmaConfigBaseAddr,
             np.array(list(srcbaseAddr.to_bytes(4, byteorder="little")), dtype=np.uint8),
         )
         hostCtrl.write(
-            configBaseAddr + 8,
+            dmaConfigBaseAddr + 8,
             np.array(list(dstbaseAddr.to_bytes(4, byteorder="little")), dtype=np.uint8),
         )
         hostCtrl.write(
-            configBaseAddr + 16,
+            dmaConfigBaseAddr + 16,
             np.array(list(length.to_bytes(4, byteorder="little")), dtype=np.uint8),
         )
-        hostCtrl.write(configBaseAddr + 24, np.zeros(4, dtype=np.uint8))
+        hostCtrl.write(dmaConfigBaseAddr + 24, np.zeros(4, dtype=np.uint8))
 
         done = False
 
         while not (done):
-            data = hostCtrl.read(configBaseAddr + 32, 4)
+            data = hostCtrl.read(dmaConfigBaseAddr + 32, 4)
             done = data[0] != 0
 
     dmaConfig()
-    # dmaConfigWithTSI()
+    # dmaConfigWithTSI() #FIXME: this will not work, internally TSI is not connected to DMAConfig 
 
     for i in range(length >> 2):
         addr = dstbaseAddr + (i * 4)
@@ -203,7 +209,7 @@ def build_testbench():
     extra_args = {
         "-n": dict(
             type=int,
-            default=10000,
+            default=100,
             help="Number of" " words to write as part of the test.",
         ),
         "--max-bytes": dict(

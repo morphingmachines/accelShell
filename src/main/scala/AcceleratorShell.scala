@@ -136,14 +136,16 @@ trait HasHost2AccelAXI4 { this: AcceleratorShell =>
         maxAtomic = 0,
         maxTransfer = ctrlBusParams.maxXferBytes,
       ),
-      beatBytes = ctrlBusParams.beatBytes,
+      beatBytes = 4,
     ),
   )
 
   val ctrlInputXbar = LazyModule(new TLXbar)
-  ctrlInputXbar.node            := TLFIFOFixer(TLFIFOFixer.allFIFO) := AXI4ToTL() := AXI4Buffer() := extMasterCtrlNode
-  extMasterCtrlErrorDevice.node := TLBuffer()                       := ctrlInputXbar.node
-  host2Accel                    := TLBuffer()                       := ctrlInputXbar.node
+  ctrlInputXbar.node := TLBuffer() := TLFIFOFixer(
+    TLFIFOFixer.allFIFO,
+  )                             := TLBuffer() := TLWidthWidget(ctrlBusParams.beatBytes) := AXI4ToTL() := AXI4Buffer() := extMasterCtrlNode
+  extMasterCtrlErrorDevice.node := TLBuffer() := ctrlInputXbar.node
+  host2Accel                    := TLBuffer() := ctrlInputXbar.node
 }
 
 trait HasAXI4ExtOut { this: AcceleratorShell =>
@@ -160,6 +162,7 @@ trait HasAXI4ExtOut { this: AcceleratorShell =>
         AXI4SlaveParameters(
           address = AddressSet.misaligned(memBusParams.base + memPortSize * i, memPortSize),
           regionType = RegionType.UNCACHED,
+          executable = true,
           supportsWrite = TransferSizes(1, memBusParams.maxXferBytes),
           supportsRead = TransferSizes(1, memBusParams.maxXferBytes),
           interleavedId = Some(0),
