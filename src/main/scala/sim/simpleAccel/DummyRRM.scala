@@ -3,11 +3,12 @@ package accelShell.sim.simpleAccel
 import accelShell._
 import chisel3._
 import chisel3.util.{isPow2, log2Ceil}
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.prci.ClockBundle
+import freechips.rocketchip.diplomacy.AddressSet
+import freechips.rocketchip.prci.{AsynchronousCrossing, ClockBundle}
 import freechips.rocketchip.subsystem.CrossingWrapper
 import freechips.rocketchip.tilelink.{TLFragmenter, TLRAM, TLWidthWidget, TLXbar}
 import org.chipsalliance.cde.config._
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 
 case class DummyRRMInternalAddrMap(
   dmaConfigOffsetAddr: BigInt = 0x1000,

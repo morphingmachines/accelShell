@@ -3,10 +3,10 @@ package accelShell.sim
 import accelShell._
 import accelShell.sim.simpleAccel.DummyRRMInternalAddrMap
 import chisel3._
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.prci.ClockBundle
+import freechips.rocketchip.prci.{AsynchronousCrossing, ClockBundle}
 import freechips.rocketchip.subsystem._
 import org.chipsalliance.cde.config._
+import org.chipsalliance.diplomacy.lazymodule.LazyModule
 
 class SimAccel(implicit p: Parameters)
   extends AcceleratorShell

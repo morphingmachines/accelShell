@@ -2,10 +2,10 @@ package accelShell.sim.simpleAccel
 
 import accelShell._
 import chisel3._
-import freechips.rocketchip.diplomacy.{AsynchronousCrossing, LazyModule}
-import freechips.rocketchip.prci.ClockBundle
+import freechips.rocketchip.prci.{AsynchronousCrossing, ClockBundle}
 import freechips.rocketchip.subsystem.CrossingWrapper
 import org.chipsalliance.cde.config._
+import org.chipsalliance.diplomacy.lazymodule.LazyModule
 
 class AccelDeviceWithTSI(implicit p: Parameters)
   extends AcceleratorShell

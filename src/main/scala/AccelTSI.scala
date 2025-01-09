@@ -1,8 +1,10 @@
 package accelShell
-import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.diplomacy.AddressSet
 import freechips.rocketchip.regmapper.RegField
+import freechips.rocketchip.resources.SimpleDevice
 import freechips.rocketchip.tilelink.TLRegisterNode
 import org.chipsalliance.cde.config._
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import testchipip.tsi.TSIToTileLink
 
 /*The TSI interface is a 32-bit input register and a 32-bit output registers.
