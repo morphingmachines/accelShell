@@ -37,9 +37,9 @@ class SimAccel(implicit p: Parameters)
 
 class SimAccelImp(outer: SimAccel) extends AcceleratorShellImp(outer) {
   val io = IO(new Bundle {
-    val accelDomain = Input(new ClockBundle)
+    val rrmDomain = Input(new ClockBundle)
   })
 
-  outer.island.module.clock := io.accelDomain.clock
-  outer.island.module.reset := io.accelDomain.reset
+  outer.island.module.clock := io.rrmDomain.clock
+  outer.island.module.reset := io.rrmDomain.reset
 }

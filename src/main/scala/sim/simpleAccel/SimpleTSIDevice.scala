@@ -1,4 +1,4 @@
-package accelShell.sim
+package accelShell.sim.simpleAccel
 
 import accelShell._
 import chisel3._

@@ -8,7 +8,6 @@ import org.chipsalliance.cde.config.Config
 
 import java.io._
 import java.nio.file._
-import freechips.rocketchip.subsystem.WithoutTLMonitors
 
 trait Toplevel {
   def topModule: chisel3.RawModule
@@ -140,12 +139,13 @@ object accelShellMain extends App with LazyToplevel {
   // import org.chipsalliance.cde.config.Parameters
   val str = if (args.length == 0) "" else args(0)
   val lazyTop = str match {
-    case "RRM"                => LazyModule(new accelShell.sim.simpleAccel.DummyRRM()(new Config(new DummyRRMConfig) ++ new WithoutTLMonitors))
-    case "SimAccel"           => LazyModule(new accelShell.sim.SimAccel()(new Config(new DefaultAccelConfig)))
-    case "SimMem"             => LazyModule(new accelShell.sim.SimDeviceMem()(new Config(new DefaultAccelConfig)))
-    case "SimAXI4Mem"         => LazyModule(new accelShell.sim.SimAXI4DeviceMem()(new Config(new DefaultAccelConfig)))
-    case "AccelDeviceWithTSI" => LazyModule(new accelShell.sim.AccelDeviceWithTSI()(new Config(new DummyRRMConfig) ++ new WithoutTLMonitors))
-    case _                    => throw new Exception("Unknown Module Name!")
+    case "DummyRRM"   => LazyModule(new accelShell.sim.simpleAccel.DummyRRM()(new Config(new DummyRRMConfig)))
+    case "SimAccel"   => LazyModule(new accelShell.sim.SimAccel()(new Config(new DefaultAccelConfig)))
+    case "SimMem"     => LazyModule(new accelShell.sim.SimDeviceMem()(new Config(new DefaultAccelConfig)))
+    case "SimAXI4Mem" => LazyModule(new accelShell.sim.SimAXI4DeviceMem()(new Config(new DefaultAccelConfig)))
+    case "AccelDeviceWithTSI" =>
+      LazyModule(new accelShell.sim.simpleAccel.AccelDeviceWithTSI()(new Config(new DummyRRMConfig)))
+    case _ => throw new Exception("Unknown Module Name!")
   }
 
   showModuleComposition(lazyTop)
