@@ -13,7 +13,7 @@ class SimAccel(implicit p: Parameters)
   with HostMemIfcAXI4
   with HasSimAXIDeviceMem
   with HasHost2AccelAXI4
-  with HasHost2DeviceMemAXI4 {
+  with HasHost2DeviceMem {
   private val ctrlBusParams = p(HostCtrlBus).get
 
   val params = AsynchronousCrossing(safe = false, narrow = true)

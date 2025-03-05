@@ -24,7 +24,7 @@ case class DummyRRMInternalAddrMap(
   *
   * DummyRRM functionality
   *   - A simple DMA engine that read data from device memory and writes to some internal SRAM.
-  *   - The slave address space is split into two regions,
+  *   - The slave address space is split into three regions,
   *     - Region-0 (baseAddr, baseAddr+0xFFF)
   *       - Configuration address space where DMA transfer info is programmed
   *         - 0x00 - Input, DMA source address should be within the device memory address range
@@ -99,8 +99,8 @@ class DummyBaseRRMImp(outer: DummyBaseRRM) extends LazyModuleImp(outer) {
 class DummyRRM(implicit p: Parameters)
   extends AcceleratorShell
   with HostMemIfcAXI4
-  with HasAXI4ExtOut
-  with HasHost2DeviceMemAXI4
+  with HasMemIfcAXI4
+  with HasHost2DeviceMem
   with HasHost2AccelAXI4 {
   private val ctrlBusParams = p(HostCtrlBus).get
 
