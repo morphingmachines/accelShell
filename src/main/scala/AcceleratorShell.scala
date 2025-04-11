@@ -86,7 +86,7 @@ trait HostMemIfcAXI4 { this: AcceleratorShell =>
   val extMasterMemXbar = LazyModule(new TLXbar)
   extMasterMemXbar.node := TLBuffer() := TLFIFOFixer(
     TLFIFOFixer.allFIFO,
-  )                            := AXI4ToTL() := AXI4UserYanker(capMaxFlight = Some(16)) := AXI4Buffer() := extMasterMemNode
+  )  := TLBuffer()  := AXI4ToTL() := AXI4UserYanker(capMaxFlight = Some(16)) := AXI4Buffer() := extMasterMemNode
   extMasterMemErrorDevice.node := TLBuffer() := extMasterMemXbar.node
   hostMemIfc                   := TLBuffer() := extMasterMemXbar.node
 }
