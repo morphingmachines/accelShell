@@ -16,7 +16,7 @@ class DummyRRMConfig
           size = BigInt(0x1_0000_0000L),
           beatBytes = 64,
           idBits = 4,
-          maxXferBytes = 4096,
+          maxXferBytes = 512,
         ),
       )
     case HostCtrlBus =>
@@ -26,7 +26,7 @@ class DummyRRMConfig
           size = BigInt(0x4000),
           beatBytes = 64,
           idBits = 4,
-          maxXferBytes = 4096,
+          maxXferBytes = 512,
         ),
       )
   })
