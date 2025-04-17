@@ -224,7 +224,7 @@ trait HasMemIfcAXI4 { this: AcceleratorShell =>
   val mem = InModuleBody(extSlaveMemNode.makeIOs())
   extSlaveMemNode :*= AXI4Buffer() :*= AXI4Xbar() := AXI4UserYanker() := AXI4Deinterleaver(
     memBusParams.maxXferBytes,
-  ) := AXI4IdIndexer(6) := TLToAXI4() := TLBuffer() := deviceMemXbar.node
+  ) := AXI4IdIndexer(4) := TLToAXI4() := TLBuffer() := deviceMemXbar.node
 }
 
 trait HasSimTLDeviceMem { this: AcceleratorShell =>
@@ -235,7 +235,7 @@ trait HasSimTLDeviceMem { this: AcceleratorShell =>
   val xbar = TLXbar()
 
   srams.foreach(s => s.node := xbar)
-  xbar := TLFragmenter(memBusParams.beatBytes, memBusParams.maxXferBytes) := TLSourceShrinker(64) := deviceMemXbar.node
+  xbar := TLFragmenter(memBusParams.beatBytes, memBusParams.maxXferBytes) := TLSourceShrinker(16) := deviceMemXbar.node
 }
 
 trait HasSimAXIDeviceMem { this: AcceleratorShell =>
@@ -247,7 +247,7 @@ trait HasSimAXIDeviceMem { this: AcceleratorShell =>
 
   srams.foreach(s => s.node := xbar)
   xbar := AXI4UserYanker() := AXI4Deinterleaver(memBusParams.maxXferBytes) := AXI4IdIndexer(
-    6,
+    4,
   ) := TLToAXI4() := TLFragmenter(
     minSize = memBusParams.beatBytes,
     maxSize = memBusParams.maxXferBytes,
