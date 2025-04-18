@@ -7,7 +7,7 @@ class SimDeviceMem(implicit p: Parameters)
   extends AcceleratorShell
   with HostMemIfcAXI4
   with HasSimTLDeviceMem
-  with HasHost2DeviceMemAXI4 {
+  with HasHost2DeviceMem {
 
   lazy val module = new SimDeviceMemImp(this)
 }
@@ -18,7 +18,7 @@ class SimAXI4DeviceMem(implicit p: Parameters)
   extends AcceleratorShell
   with HostMemIfcAXI4
   with HasSimAXIDeviceMem
-  with HasHost2DeviceMemAXI4 {
+  with HasHost2DeviceMem {
 
   lazy val module = new SimAXI4DeviceMemImp(this)
 }

@@ -13,7 +13,7 @@ class SimAccel(implicit p: Parameters)
   with HostMemIfcAXI4
   with HasSimAXIDeviceMem
   with HasHost2AccelAXI4
-  with HasHost2DeviceMemAXI4 {
+  with HasHost2DeviceMem {
   private val ctrlBusParams = p(HostCtrlBus).get
 
   val params = AsynchronousCrossing(safe = false, narrow = true)
@@ -37,9 +37,9 @@ class SimAccel(implicit p: Parameters)
 
 class SimAccelImp(outer: SimAccel) extends AcceleratorShellImp(outer) {
   val io = IO(new Bundle {
-    val accelDomain = Input(new ClockBundle)
+    val rrmDomain = Input(new ClockBundle)
   })
 
-  outer.island.module.clock := io.accelDomain.clock
-  outer.island.module.reset := io.accelDomain.reset
+  outer.island.module.clock := io.rrmDomain.clock
+  outer.island.module.reset := io.rrmDomain.reset
 }

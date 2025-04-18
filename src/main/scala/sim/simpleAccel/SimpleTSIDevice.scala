@@ -10,8 +10,8 @@ import org.chipsalliance.diplomacy.lazymodule.LazyModule
 class AccelDeviceWithTSI(implicit p: Parameters)
   extends AcceleratorShell
   with HostMemIfcAXI4
-  with HasAXI4ExtOut
-  with HasHost2DeviceMemAXI4
+  with HasMemIfcAXI4
+  with HasHost2DeviceMem
   with HasHost2AccelAXI4 {
 
   val accelIfc = p(HostCtrlBus).get
