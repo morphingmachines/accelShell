@@ -2,6 +2,7 @@ package accelShell
 import freechips.rocketchip.subsystem.MasterPortParams
 import org.chipsalliance.cde.config._
 
+/* Host accesses device memory through the HostMemBus */
 case object HostMemBus        extends Field[Option[MasterPortParams]](None)
 case object HostCtrlBus       extends Field[Option[MasterPortParams]](None)
 case object NumMemoryChannels extends Field[Int](1)

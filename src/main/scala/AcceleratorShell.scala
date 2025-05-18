@@ -147,7 +147,7 @@ trait HasHost2AccelAXI4 { this: AcceleratorShell =>
       DevNullParams(
         address = Seq(AddressSet(ctrlBusParams.base + ctrlBusParams.size, 0xfff)),
         maxAtomic = 0,
-        maxTransfer = ctrlBusParams.maxXferBytes,
+        maxTransfer = ctrlBusParams.beatBytes,
       ),
       beatBytes = 4,
     ),
