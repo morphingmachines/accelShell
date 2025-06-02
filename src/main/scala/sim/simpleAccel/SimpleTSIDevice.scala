@@ -4,6 +4,7 @@ import accelShell._
 import chisel3._
 import freechips.rocketchip.prci.{AsynchronousCrossing, ClockBundle}
 import freechips.rocketchip.subsystem.CrossingWrapper
+import freechips.rocketchip.tilelink.TLFragmenter
 import org.chipsalliance.cde.config._
 import org.chipsalliance.diplomacy.lazymodule.LazyModule
 
@@ -22,7 +23,7 @@ class AccelDeviceWithTSI(implicit p: Parameters)
     LazyModule(new AccelTSI(accelIfc.base, accelIfc.size, accelIfc.beatBytes)),
   )
 
-  island.crossTLIn(accelTSI.regNode) := host2Accel
+  island.crossTLIn(accelTSI.regNode) := TLFragmenter(4, accelIfc.beatBytes) := host2Accel
   deviceMemXbar.node                 := island.crossTLOut(accelTSI.tsi2tl.node)
 
   lazy val module = new AccelDeviceWithTSIImp(this)
