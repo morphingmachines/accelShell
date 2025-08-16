@@ -2,9 +2,11 @@ package accelShell
 import chisel3.util.isPow2
 import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.devices.tilelink.{DevNullParams, TLError}
-import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.diplomacy.{AddressSet, IdRange, RegionType, TransferSizes}
 import freechips.rocketchip.tilelink._
 import org.chipsalliance.cde.config._
+import org.chipsalliance.diplomacy.ValName
+import org.chipsalliance.diplomacy.lazymodule.{InModuleBody, LazyModule, LazyModuleImp}
 
 abstract class AcceleratorShell(implicit p: Parameters) extends LazyModule {
   val hostMemIfc = TLEphemeralNode()(ValName("HostMemIfc"))
