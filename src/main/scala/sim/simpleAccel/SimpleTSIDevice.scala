@@ -20,7 +20,7 @@ class AccelDeviceWithTSI(implicit p: Parameters)
   val params = AsynchronousCrossing(safe = false, narrow = true)
   val island = LazyModule(new CrossingWrapper(params))
   val accelTSI = island(
-    LazyModule(new AccelTSI(accelIfc.base, accelIfc.size, accelIfc.beatBytes)),
+    LazyModule(new AccelTSI(base = 0x1000)),
   )
 
   island.crossTLIn(accelTSI.regNode) := TLFragmenter(4, accelIfc.beatBytes) := host2Accel

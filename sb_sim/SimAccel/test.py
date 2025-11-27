@@ -243,7 +243,7 @@ def build_testbench():
         "tool",
         "verilator",
         "task",
-        "compile",
+        "compile"
         "warningoff",
         ["WIDTHEXPAND", "CASEINCOMPLETE", "WIDTHTRUNC", "TIMESCALEMOD"],
     )

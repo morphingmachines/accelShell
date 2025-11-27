@@ -77,7 +77,7 @@ object myrocketchip extends rocketchip_common.RocketChipModule with SbtModule {
 
 // UCB
 object myhardfloat extends hardfloat_common.HardfloatModule with PublishModule {
-  override def millSourcePath = os.pwd / os.up / "playground" / "dependencies" / "berkeley-hardfloat" /"hardfloat"
+  override def millSourcePath = os.pwd / os.up / "playground" / "dependencies" / "berkeley-hardfloat" / "hardfloat"
   def scalaVersion            = playground_build.ivys.sv
 
   def chiselModule = None
@@ -133,24 +133,26 @@ object shells extends playground_build.CommonModule with SbtModule {
 }
 
 object chipyardAnnotations extends playground_build.CommonModule with SbtModule {
-  override def millSourcePath = os.pwd / os.up/ "playground" / "dependencies" / "chipyard" / "tools" / "stage"
+  override def millSourcePath = os.pwd / os.up / "playground" / "dependencies" / "chipyard" / "tools" / "stage"
   override def moduleDeps     = super.moduleDeps ++ Seq(myrocketchip)
 }
 
 object chipyardTapeout extends playground_build.CommonModule with SbtModule {
-  override def millSourcePath = os.pwd / os.up/ "playground" / "dependencies" / "chipyard" / "tools" / "tapeout"
-  //override def millSourcePath = os.pwd / "dependencies" / "chipyard" / "tools" / "tapeout"
+  override def millSourcePath = os.pwd / os.up / "playground" / "dependencies" / "chipyard" / "tools" / "tapeout"
+  // override def millSourcePath = os.pwd / "dependencies" / "chipyard" / "tools" / "tapeout"
   override def scalaVersion = playground_build.ivys.sv1 // stuck on chisel3 2.13.10
-  override def chiselIvy = Some(playground_build.ivys.chiselCrossVersions(playground_build.ivys.cv1)._1) // stuck on chisel3 and SFC
+  override def chiselIvy = Some(
+    playground_build.ivys.chiselCrossVersions(playground_build.ivys.cv1)._1,
+  ) // stuck on chisel3 and SFC
   override def chiselPluginIvy = Some(playground_build.ivys.chiselCrossVersions(playground_build.ivys.cv1)._1)
-  //def playjsonIvy = ivys.playjson
-  def playjsonIvy = ivy"com.typesafe.play::play-json:2.9.2"
-  override def ivyDeps = T(super.ivyDeps() ++ Some(playjsonIvy))
+  // def playjsonIvy = ivys.playjson
+  def playjsonIvy         = ivy"com.typesafe.play::play-json:2.9.2"
+  override def ivyDeps    = T(super.ivyDeps() ++ Some(playjsonIvy))
   override def moduleDeps = super.moduleDeps
 }
 
 object emitrtl extends playground_build.CommonModule with SbtModule {
-  override def millSourcePath = os.pwd / "dependencies" / "emitrtl"
+  override def millSourcePath = os.pwd / os.up / "playground" / "dependencies" / "emitrtl"
 
   override def moduleDeps = super.moduleDeps ++ Seq(myrocketchip, chipyardAnnotations, chipyardTapeout)
 }

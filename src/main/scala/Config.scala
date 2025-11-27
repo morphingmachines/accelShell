@@ -25,9 +25,9 @@ class DummyRRMConfig
         new MasterPortParams(
           base = BigInt(0x1_0000_0000L),
           size = BigInt(0x4000),
-          beatBytes = 64,
+          beatBytes = 4,
           idBits = 4,
-          maxXferBytes = 512,
+          maxXferBytes = 4,
         ),
       )
   })

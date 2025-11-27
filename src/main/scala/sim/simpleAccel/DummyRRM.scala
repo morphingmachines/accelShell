@@ -6,17 +6,18 @@ import chisel3.util.{isPow2, log2Ceil}
 import freechips.rocketchip.diplomacy.AddressSet
 import freechips.rocketchip.prci.{AsynchronousCrossing, ClockBundle}
 import freechips.rocketchip.subsystem.CrossingWrapper
-import freechips.rocketchip.tilelink.{TLFragmenter, TLRAM, TLWidthWidget, TLXbar}
+import freechips.rocketchip.tilelink.{TLRAM, TLXbar}
 import org.chipsalliance.cde.config._
 import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
+//import freechips.rocketchip.tilelink.TLWidthWidget
 
 case class DummyRRMInternalAddrMap(
   dmaConfigOffsetAddr: BigInt = 0x1000,
   dmaConfigSize:       BigInt = 0x1000,
-  accelTSIOffsetAddr:  BigInt = 0,
-  accelTSISize:        BigInt = 0x1000,
   dmaBufferOffsetAddr: BigInt = 0x2000,
   dmaBufferSize:       BigInt = 0x1000,
+  accelTSIOffsetAddr:  BigInt = 0x3000,
+  accelTSISize:        BigInt = 0x1000,
 )
 
 /** DummyBaseRRM is true to the RRM interfaces.
@@ -45,15 +46,15 @@ case class DummyRRMInternalAddrMap(
   *     program the DMA, and validate it by reading it from the internal SRAM.
   */
 
-class DummyBaseRRM(base: BigInt, size: BigInt, internalAddrMap: DummyRRMInternalAddrMap)(implicit p: Parameters)
-  extends LazyModule {
-  require(size >= (internalAddrMap.accelTSISize + internalAddrMap.dmaBufferSize + internalAddrMap.dmaConfigSize))
+class DummyBaseRRM(internalAddrMap: DummyRRMInternalAddrMap)(implicit p: Parameters) extends LazyModule {
   require(isPow2(internalAddrMap.dmaBufferSize))
 
   val deviceMemParams = p(HostMemBus).get
   val accelIfc        = p(HostCtrlBus).get
 
-  val bramBase = base + internalAddrMap.dmaBufferOffsetAddr
+  println(s"HostCtrlIfc: ${accelIfc}")
+  println(s"HostMemIfc: ${deviceMemParams}")
+  val bramBase = internalAddrMap.dmaBufferOffsetAddr
   val bram = LazyModule(
     new TLRAM(AddressSet(bramBase, internalAddrMap.dmaBufferSize - 1), beatBytes = deviceMemParams.beatBytes),
   )
@@ -69,25 +70,24 @@ class DummyBaseRRM(base: BigInt, size: BigInt, internalAddrMap: DummyRRMInternal
 
   val internalMemAddrWidth = log2Ceil(bramBase + internalAddrMap.dmaBufferSize)
 
-  val tsiBase = base + internalAddrMap.accelTSIOffsetAddr
+  val tsiBase = internalAddrMap.accelTSIOffsetAddr
   val accelTSI = LazyModule(
     new AccelTSI(base = tsiBase, size = internalAddrMap.accelTSISize, fieldAlignment = accelIfc.beatBytes),
   )
-  val dmaConfigBase = base + internalAddrMap.dmaConfigOffsetAddr
+  val dmaConfigBase = internalAddrMap.dmaConfigOffsetAddr
   val dmaConfig     = LazyModule(new DMAConfig(dmaConfigBase, extMemAddrWidth, internalMemAddrWidth))
   val dmaCtrl       = LazyModule(new DMACtrl(4, extMemAddrWidth, internalMemAddrWidth))
 
-  deviecMemSlaveBus := dmaCtrl.rdClient
+  dmaConfig.regNode := host2AccelMasterBus
+  accelTSI.regNode  := host2AccelMasterBus
 
   bramSlaveBus := dmaCtrl.wrClient
-  bramSlaveBus := TLWidthWidget(4) := host2AccelMasterBus
 
-  accelTSI.regNode  := TLFragmenter(4, maxXferBytesAccelIfc) := host2AccelMasterBus
-  bramSlaveBus      := tsiMasterBus                          := accelTSI.tsi2tl.node
-  deviecMemSlaveBus := tsiMasterBus
+  deviecMemSlaveBus := dmaCtrl.rdClient
+  deviecMemSlaveBus := tsiMasterBus := accelTSI.tsi2tl.node
+  bramSlaveBus      := tsiMasterBus
 
-  dmaConfig.regNode := TLFragmenter(4, maxXferBytesAccelIfc)                         := host2AccelMasterBus
-  bram.node         := TLFragmenter(deviceMemParams.beatBytes, maxXferBytesAccelIfc) := bramSlaveBus
+  bram.node := bramSlaveBus
 
   lazy val module = new DummyBaseRRMImp(this)
 }
@@ -103,7 +103,6 @@ class DummyRRM(implicit p: Parameters)
   with HasMemIfcAXI4
   with HasHost2DeviceMem
   with HasHost2AccelAXI4 {
-  private val ctrlBusParams = p(HostCtrlBus).get
 
   val params = AsynchronousCrossing(safe = false, narrow = true)
   val island = LazyModule(new CrossingWrapper(params))
@@ -111,9 +110,7 @@ class DummyRRM(implicit p: Parameters)
   val rrm = island(
     LazyModule(
       new DummyBaseRRM(
-        ctrlBusParams.base,
-        ctrlBusParams.size,
-        DummyRRMInternalAddrMap(dmaBufferOffsetAddr = 0x2000, dmaConfigOffsetAddr = 0x1000, accelTSIOffsetAddr = 0),
+        DummyRRMInternalAddrMap(dmaBufferOffsetAddr = 0x2000, dmaConfigOffsetAddr = 0x1000, accelTSIOffsetAddr = 0x3000),
       ),
     ),
   )

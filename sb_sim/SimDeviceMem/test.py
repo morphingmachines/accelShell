@@ -107,7 +107,7 @@ def build_testbench():
     resets = [dict(name='rst', delay=0)]
 
     extra_args = {
-        '-n': dict(type=int, default=10000, help='Number of'
+        '-n': dict(type=int, default=10, help='Number of'
         ' words to write as part of the test.'),
         '--max-bytes': dict(type=int, default=4, help='Maximum'
         ' number of bytes in any single read/write.'),

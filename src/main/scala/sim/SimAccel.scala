@@ -14,7 +14,6 @@ class SimAccel(implicit p: Parameters)
   with HasSimAXIDeviceMem
   with HasHost2AccelAXI4
   with HasHost2DeviceMem {
-  private val ctrlBusParams = p(HostCtrlBus).get
 
   val params = AsynchronousCrossing(safe = false, narrow = true)
   val island = LazyModule(new CrossingWrapper(params))
@@ -22,9 +21,7 @@ class SimAccel(implicit p: Parameters)
   val rrm = island(
     LazyModule(
       new simpleAccel.DummyBaseRRM(
-        ctrlBusParams.base,
-        ctrlBusParams.size,
-        DummyRRMInternalAddrMap(dmaBufferOffsetAddr = 0x2000, dmaConfigOffsetAddr = 0x1000, accelTSIOffsetAddr = 0),
+        DummyRRMInternalAddrMap(dmaBufferOffsetAddr = 0x2000, dmaConfigOffsetAddr = 0x1000, accelTSIOffsetAddr = 0x3000),
       ),
     ),
   )
