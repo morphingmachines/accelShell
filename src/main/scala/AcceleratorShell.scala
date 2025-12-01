@@ -1,5 +1,5 @@
 package accelShell
-import chisel3.util.isPow2
+import chisel3.util.{isPow2, log2Ceil}
 import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.devices.tilelink.{DevNullParams, TLError}
 import freechips.rocketchip.diplomacy.{AddressSet, IdRange, RegionType, TransferSizes}
@@ -112,6 +112,16 @@ trait Host2AccelBus { this: AcceleratorShell =>
         )
       },
     )
+
+  InModuleBody {
+    val (in, _)  = hostCtrlAddrShrinkNode.in(0)
+    val (out, _) = hostCtrlAddrShrinkNode.out(0)
+    out.a.valid := in.a.valid
+    in.a.ready  := out.a.ready
+    out.a.bits.exclude(_.address) :<= in.a.bits.exclude(_.address)
+    out.a.bits.address := in.a.bits.address.take(log2Ceil(ctrlBusParams.size))
+    in.d <> out.d
+  }
 
   val ctrlInputXbar = LazyModule(new TLXbar)
   extMasterCtrlErrorDevice.node := ctrlInputXbar.node := hostCtrlAddrShrinkNode
