@@ -125,7 +125,15 @@ trait Host2AccelBus { this: AcceleratorShell =>
 
   val ctrlInputXbar = LazyModule(new TLXbar)
   extMasterCtrlErrorDevice.node := ctrlInputXbar.node := hostCtrlAddrShrinkNode
-  host2Accel                    := ctrlInputXbar.node
+  val internalCtrlBusDataWidth = 4 // XDMA Control interface downstream datawidth
+
+  host2Accel := TLBuffer() := TLFIFOFixer() := TLFragmenter(
+    internalCtrlBusDataWidth,
+    ctrlBusParams.beatBytes,
+    true,
+  ) := TLWidthWidget(
+    ctrlBusParams.beatBytes,
+  ) := ctrlInputXbar.node
 }
 
 trait HasHost2Accel extends Host2AccelBus { this: AcceleratorShell =>
