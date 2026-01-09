@@ -24,22 +24,8 @@ trait HasHost2DeviceMem { this: AcceleratorShell =>
 }
 
 trait Host2MemBus { this: AcceleratorShell =>
-  private val memBusParams = p(HostMemBus).get
-
-  val extMasterMemErrorDevice = LazyModule(
-    new TLError(
-      DevNullParams(
-        address = Seq(AddressSet(memBusParams.base + memBusParams.size, 0xfff)),
-        maxAtomic = 0,
-        maxTransfer = memBusParams.maxXferBytes,
-      ),
-      beatBytes = memBusParams.beatBytes,
-    ),
-  )
-
   val extMasterMemXbar = LazyModule(new TLXbar)
-  extMasterMemErrorDevice.node := extMasterMemXbar.node
-  hostMemIfc                   := extMasterMemXbar.node
+  hostMemIfc := extMasterMemXbar.node
 }
 
 trait HostMemIfc extends Host2MemBus { this: AcceleratorShell =>
@@ -79,32 +65,38 @@ trait HostMemIfcAXI4 extends Host2MemBus { this: AcceleratorShell =>
   )
   val hostMem = InModuleBody(extMasterMemNode.makeIOs())
 
-  extMasterMemXbar.node := TLBuffer() := TLFIFOFixer(
+  val extMasterMemErrorDevice = LazyModule(
+    new TLError(
+      DevNullParams(
+        address = Seq(AddressSet(memBusParams.base + memBusParams.size, 0xfff)),
+        maxAtomic = 0,
+        maxTransfer = memBusParams.maxXferBytes,
+      ),
+      beatBytes = memBusParams.beatBytes,
+    ),
+  )
+  extMasterMemErrorDevice.node := extMasterMemXbar.node
+  extMasterMemXbar.node        := TLBuffer() := TLFIFOFixer(
     TLFIFOFixer.allFIFO,
   ) := TLBuffer() := AXI4ToTL() := AXI4UserYanker(capMaxFlight = Some(16)) := AXI4Buffer() := extMasterMemNode
 }
 
 trait Host2AccelBus { this: AcceleratorShell =>
-  private val ctrlBusParams = p(HostCtrlBus).get
-  val extMasterCtrlErrorDevice = LazyModule(
-    new TLError(
-      DevNullParams(
-        address = Seq(AddressSet(0, 0xfff)),
-        maxAtomic = 0,
-        maxTransfer = ctrlBusParams.maxXferBytes,
-      ),
-      beatBytes = ctrlBusParams.beatBytes,
-    ),
-  )
+  val ctrlInputXbar = LazyModule(new TLXbar)
+  host2Accel := ctrlInputXbar.node
+}
 
+trait XDMACtrlBusShrink { this: AcceleratorShell =>
+  private val ctrlBusParams = p(HostCtrlBus).get
+
+  // Shrink address width to log2Ceil(ctrlBusParams.size)
   val hostCtrlAddrShrinkNode =
     TLAdapterNode(
       clientFn = { case cp => cp.v1copy(clients = cp.clients.map(c => c.v1copy())) },
       managerFn = { case mp =>
         mp.v1copy(
           managers = mp.managers.map { m =>
-            require(m.address.length == 1)
-            require((m.address.head.base & ~(ctrlBusParams.size - 1)) == 0)
+            m.address.map(x => require(x.max.bitLength < ctrlBusParams.size.bitLength))
             m.v1copy(address =
               Seq(AddressSet(base = ctrlBusParams.base | m.address.head.base, mask = m.address.head.mask)),
             )
@@ -113,30 +105,31 @@ trait Host2AccelBus { this: AcceleratorShell =>
       },
     )
 
-  InModuleBody {
-    val (in, _)  = hostCtrlAddrShrinkNode.in(0)
-    val (out, _) = hostCtrlAddrShrinkNode.out(0)
-    out.a.valid := in.a.valid
-    in.a.ready  := out.a.ready
-    out.a.bits.exclude(_.address) :<= in.a.bits.exclude(_.address)
-    out.a.bits.address := in.a.bits.address.take(log2Ceil(ctrlBusParams.size))
-    in.d <> out.d
-  }
+  def getHost2AccelNode(outBeatBytes: Int) =
+    if (outBeatBytes != ctrlBusParams.beatBytes) {
+      InModuleBody {
+        val (in, _)  = hostCtrlAddrShrinkNode.in(0)
+        val (out, _) = hostCtrlAddrShrinkNode.out(0)
+        out.a.valid := in.a.valid
+        in.a.ready  := out.a.ready
+        out.a.bits.exclude(_.address) :<= in.a.bits.exclude(_.address)
+        out.a.bits.address := in.a.bits.address.take(log2Ceil(ctrlBusParams.size))
+        in.d <> out.d
+      }
 
-  val ctrlInputXbar = LazyModule(new TLXbar)
-  extMasterCtrlErrorDevice.node := ctrlInputXbar.node := hostCtrlAddrShrinkNode
-  val internalCtrlBusDataWidth = 4 // XDMA Control interface downstream datawidth
-
-  host2Accel := TLBuffer() := TLFIFOFixer() := TLFragmenter(
-    internalCtrlBusDataWidth,
-    ctrlBusParams.beatBytes,
-    true,
-  ) := TLWidthWidget(
-    ctrlBusParams.beatBytes,
-  ) := ctrlInputXbar.node
+      TLBuffer() := TLFIFOFixer() := TLFragmenter(
+        outBeatBytes,
+        ctrlBusParams.beatBytes,
+        true,
+      ) := TLWidthWidget(
+        ctrlBusParams.beatBytes,
+      ) := hostCtrlAddrShrinkNode := host2Accel
+    } else {
+      TLBuffer() := host2Accel
+    }
 }
 
-trait HasHost2Accel extends Host2AccelBus { this: AcceleratorShell =>
+trait HasHost2Accel extends Host2AccelBus with XDMACtrlBusShrink { this: AcceleratorShell =>
   private val ctrlBusParams = p(HostCtrlBus).get
   val extMasterCtrlNode = TLClientNode(
     Seq(
@@ -152,10 +145,10 @@ trait HasHost2Accel extends Host2AccelBus { this: AcceleratorShell =>
   )
   val hostCtrl = InModuleBody(extMasterCtrlNode.makeIOs())
 
-  hostCtrlAddrShrinkNode := TLBuffer() := extMasterCtrlNode
+  ctrlInputXbar.node := TLBuffer() := extMasterCtrlNode
 }
 
-trait HasHost2AccelAXI4 extends Host2AccelBus { this: AcceleratorShell =>
+trait HasHost2AccelAXI4 extends Host2AccelBus with XDMACtrlBusShrink { this: AcceleratorShell =>
   private val ctrlBusParams = p(HostCtrlBus).get
   val extMasterCtrlNode = AXI4MasterNode(
     Seq(
@@ -173,7 +166,19 @@ trait HasHost2AccelAXI4 extends Host2AccelBus { this: AcceleratorShell =>
   )
   val hostCtrl = InModuleBody(extMasterCtrlNode.makeIOs())
 
-  hostCtrlAddrShrinkNode := TLBuffer() := TLFIFOFixer(
+  val extMasterCtrlErrorDevice = LazyModule(
+    new TLError(
+      DevNullParams(
+        address = Seq(AddressSet(ctrlBusParams.base + ctrlBusParams.size, 0xfff)),
+        maxAtomic = 0,
+        maxTransfer = ctrlBusParams.maxXferBytes,
+      ),
+      beatBytes = ctrlBusParams.beatBytes,
+    ),
+  )
+  extMasterCtrlErrorDevice.node := ctrlInputXbar.node
+
+  ctrlInputXbar.node := TLBuffer() := TLFIFOFixer(
     TLFIFOFixer.allFIFO,
   ) := TLBuffer() := AXI4ToTL() := AXI4UserYanker(capMaxFlight =
     Some(4),
