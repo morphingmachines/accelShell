@@ -94,6 +94,7 @@ trait XDMACtrlBusShrink { this: AcceleratorShell =>
     TLAdapterNode(
       clientFn = { case cp => cp.v1copy(clients = cp.clients.map(c => c.v1copy())) },
       managerFn = { case mp =>
+        require(isPow2(ctrlBusParams.size))
         mp.v1copy(
           managers = mp.managers.map { m =>
             m.address.map(x => require(x.max.bitLength < ctrlBusParams.size.bitLength))
@@ -105,18 +106,18 @@ trait XDMACtrlBusShrink { this: AcceleratorShell =>
       },
     )
 
-  def getHost2AccelNode(outBeatBytes: Int) =
-    if (outBeatBytes != ctrlBusParams.beatBytes) {
-      InModuleBody {
-        val (in, _)  = hostCtrlAddrShrinkNode.in(0)
-        val (out, _) = hostCtrlAddrShrinkNode.out(0)
-        out.a.valid := in.a.valid
-        in.a.ready  := out.a.ready
-        out.a.bits.exclude(_.address) :<= in.a.bits.exclude(_.address)
-        out.a.bits.address := in.a.bits.address.take(log2Ceil(ctrlBusParams.size))
-        in.d <> out.d
-      }
+  def getHost2AccelNode(outBeatBytes: Int) = {
+    InModuleBody {
+      val (in, _)  = hostCtrlAddrShrinkNode.in(0)
+      val (out, _) = hostCtrlAddrShrinkNode.out(0)
+      out.a.valid := in.a.valid
+      in.a.ready  := out.a.ready
+      out.a.bits.exclude(_.address) :<= in.a.bits.exclude(_.address)
+      out.a.bits.address := in.a.bits.address.take(log2Ceil(ctrlBusParams.size))
+      in.d <> out.d
+    }
 
+    if (outBeatBytes != ctrlBusParams.beatBytes) {
       TLBuffer() := TLFIFOFixer() := TLFragmenter(
         outBeatBytes,
         ctrlBusParams.beatBytes,
@@ -125,8 +126,9 @@ trait XDMACtrlBusShrink { this: AcceleratorShell =>
         ctrlBusParams.beatBytes,
       ) := hostCtrlAddrShrinkNode := host2Accel
     } else {
-      TLBuffer() := host2Accel
+      TLBuffer() := hostCtrlAddrShrinkNode := host2Accel
     }
+  }
 }
 
 trait HasHost2Accel extends Host2AccelBus with XDMACtrlBusShrink { this: AcceleratorShell =>
