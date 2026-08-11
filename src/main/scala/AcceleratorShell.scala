@@ -248,7 +248,7 @@ trait HasMemIfcAXI4 { this: AcceleratorShell =>
   val mem = InModuleBody(extSlaveMemNode.makeIOs())
   extSlaveMemNode :*= AXI4Buffer() :*= AXI4Xbar() := AXI4UserYanker() := AXI4Deinterleaver(
     memBusParams.maxXferBytes,
-  ) := AXI4IdIndexer(4) := TLToAXI4() := TLBuffer() := deviceMemXbar.node
+  ) := AXI4IdIndexer(4) := AXI4Buffer() := TLToAXI4() := TLBuffer() := deviceMemXbar.node
 }
 
 trait HasSimTLDeviceMem { this: AcceleratorShell =>
